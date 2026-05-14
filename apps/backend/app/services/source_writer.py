@@ -1,7 +1,9 @@
 from datetime import datetime
 from pathlib import Path
+import os
 import re
 import shutil
+import tempfile
 import xml.etree.ElementTree as ET
 
 from app.services.mtr_parser import parse_mtr_file
@@ -23,12 +25,44 @@ def save_to_source(path: str | Path, updates: dict, backup_root: str | Path) -> 
         raise FileNotFoundError(f"Sorgente non trovato: {source}")
     updates = _normalize_updates(updates)
     backup_path = _backup(source, backup_root)
-    if source.suffix.lower() == ".csv":
-        changed = _save_csv(source, updates)
-    else:
-        changed = _save_xml_or_text_mtr(source, updates)
+    try:
+        if source.suffix.lower() == ".csv":
+            changed = _save_csv(source, updates)
+        else:
+            changed = _save_xml_or_text_mtr(source, updates)
+    except Exception:
+        _restore_from_backup(backup_path, source)
+        raise
     parsed = parse_mtr_file(source)
     return {"source": str(source), "backup": str(backup_path), "changed": changed, "parsed": parsed}
+
+
+def _restore_from_backup(backup_path: Path, source: Path) -> None:
+    if backup_path.exists():
+        shutil.copy2(backup_path, source)
+
+
+def _atomic_write_bytes(target: Path, data: bytes) -> None:
+    target_dir = target.parent
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{target.name}.", suffix=".tmp", dir=str(target_dir))
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, target)
+    except Exception:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+        raise
+
+
+def _atomic_write_text(target: Path, text: str, encoding: str = "utf-8") -> None:
+    _atomic_write_bytes(target, text.encode(encoding))
 
 
 def _backup(source: Path, backup_root: str | Path) -> Path:
@@ -85,7 +119,8 @@ def _save_xml(source: Path, updates: dict) -> list[str]:
             else:
                 item.text = str(updates[field])
             changed.append(field)
-    tree.write(source, encoding="utf-8", xml_declaration=True)
+    payload = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    _atomic_write_bytes(source, payload)
     return changed
 
 
@@ -108,5 +143,5 @@ def _save_key_value_text(source: Path, updates: dict, separators: str = r"[:=]")
                 changed.append(field)
                 break
         output.append(new_line)
-    source.write_text("\n".join(output) + "\n", encoding="utf-8")
+    _atomic_write_text(source, "\n".join(output) + "\n")
     return changed

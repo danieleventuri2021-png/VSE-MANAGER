@@ -1,11 +1,14 @@
+import logging
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models import FileMtr, LavoroVse, PdfGenerato, VerificaVse
 from app.services.pdf_generator import generate_vse_pdf, to_legacy_edited
 from app.services.vse_defaults import ansur_defaults, job_defaults, merge_final_data, source_data
+
+logger = logging.getLogger(__name__)
 
 
 def build_final_pdf_data(job: LavoroVse, file_mtr: FileMtr, verification: VerificaVse | None = None) -> dict[str, Any]:
@@ -79,13 +82,22 @@ def generate_one_pdf(db: Session, job: LavoroVse, file_mtr: FileMtr, output_dir:
 
 def generate_all_pdfs(db: Session, job: LavoroVse, output_dir: str | Path) -> dict:
     report = {"total": 0, "generated": 0, "errors": [], "skipped": [], "anomalies": []}
-    files = db.query(FileMtr).filter(FileMtr.lavoro_id == job.id).order_by(FileMtr.id).all()
+    files = (
+        db.query(FileMtr)
+        .options(selectinload(FileMtr.verifiche), selectinload(FileMtr.matched_apparecchiature))
+        .filter(FileMtr.lavoro_id == job.id)
+        .order_by(FileMtr.id)
+        .all()
+    )
     report["total"] = len(files)
     for file_mtr in files:
         try:
             generate_one_pdf(db, job, file_mtr, output_dir)
+            db.commit()
             report["generated"] += 1
         except Exception as exc:
+            db.rollback()
+            logger.exception("Errore generazione PDF per file_mtr_id=%s", file_mtr.id)
             report["errors"].append({"file_mtr_id": file_mtr.id, "error": str(exc)})
     return report
 

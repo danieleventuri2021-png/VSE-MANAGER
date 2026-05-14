@@ -1,5 +1,5 @@
 import { Activity, ArrowUpDown, Calendar, ListChecks, LoaderCircle, Search, UploadCloud, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, getRegistryMeasurements, getRegistryTrend, listRegistryClients, listRegistryEquipment, syncRegistry, type Job } from "../api/client";
 import { Panel } from "../components/Panel";
 import { RefreshButton } from "../components/RefreshButton";
@@ -27,12 +27,16 @@ export function Registry({ jobs }: { jobs: Job[] }) {
   const [modal, setModal] = useState<{ title: string; type: "measurements" | "trend"; data: any } | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState("");
 
   async function load() {
     setLoading(true);
+    setError("");
     try {
       setRows(await listRegistryEquipment(cliente ? { cliente } : undefined));
       setClients(await listRegistryClients());
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Caricamento archivio non riuscito.");
     } finally {
       setLoading(false);
     }
@@ -41,10 +45,13 @@ export function Registry({ jobs }: { jobs: Job[] }) {
   async function sync() {
     if (!jobId) return;
     setSyncing(true);
+    setError("");
     try {
       const data = await syncRegistry(jobId);
       setReport(data);
       await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Sincronizzazione archivio non riuscita.");
     } finally {
       setSyncing(false);
     }
@@ -55,11 +62,15 @@ export function Registry({ jobs }: { jobs: Job[] }) {
     return cliente ? `${base}?cliente=${encodeURIComponent(cliente)}` : base;
   }
 
-  function sortBy(key: string) {
+  const sortBy = useCallback((key: string) => {
     setSort((current) => ({ key, dir: current.key === key && current.dir === "asc" ? "desc" : "asc" }));
-  }
+  }, []);
 
-  function visibleRows() {
+  const handleFilterChange = useCallback((key: string, value: string) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+  }, []);
+
+  const displayedRows = useMemo(() => {
     const filtered = rows.filter((row) =>
       columns.every((column) => {
         const needle = (filters[column.key] || "").trim().toLowerCase();
@@ -68,26 +79,34 @@ export function Registry({ jobs }: { jobs: Job[] }) {
         return String(value || "").toLowerCase().includes(needle);
       }),
     );
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const left = String((sort.key === "matricola" ? a.matricola || a.inventario_gestionale : a[sort.key]) || "").toLowerCase();
       const right = String((sort.key === "matricola" ? b.matricola || b.inventario_gestionale : b[sort.key]) || "").toLowerCase();
       return sort.dir === "asc" ? left.localeCompare(right) : right.localeCompare(left);
     });
-  }
+  }, [rows, filters, sort]);
 
   async function openMeasurements(row: any) {
-    const data = await getRegistryMeasurements(row.id);
-    setModal({ title: `Misure - ${row.tipologia || row.modello || row.identificativo}`, type: "measurements", data });
+    setError("");
+    try {
+      const data = await getRegistryMeasurements(row.id);
+      setModal({ title: `Misure - ${row.tipologia || row.modello || row.identificativo}`, type: "measurements", data });
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Lettura misure non riuscita.");
+    }
   }
 
   async function openTrend(row: any) {
-    const data = await getRegistryTrend(row.id);
-    setModal({ title: `Trend - ${row.tipologia || row.modello || row.identificativo}`, type: "trend", data });
+    setError("");
+    try {
+      const data = await getRegistryTrend(row.id);
+      setModal({ title: `Trend - ${row.tipologia || row.modello || row.identificativo}`, type: "trend", data });
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Lettura trend non riuscita.");
+    }
   }
 
   useEffect(() => { load(); }, []);
-
-  const displayedRows = visibleRows();
 
   return (
     <div className="grid gap-4">
@@ -105,6 +124,7 @@ export function Registry({ jobs }: { jobs: Job[] }) {
           <button className="inline-flex h-10 items-center gap-2 rounded-md bg-action px-3 text-sm text-white disabled:cursor-wait disabled:opacity-70" onClick={sync} disabled={syncing}>{syncing ? <LoaderCircle size={16} className="animate-spin" /> : <UploadCloud size={16} />} {syncing ? "Aggiorno archivio..." : "Aggiorna archivio da lavoro"}</button>
           <a className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm" href={calendarUrl()}><Calendar size={16} /> Esporta Google Calendar</a>
         </div>
+        {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {report && <pre className="mt-4 overflow-auto rounded-md bg-slate-900 p-3 text-xs text-white">{JSON.stringify(report, null, 2)}</pre>}
       </Panel>
       <Panel title={`Apparecchiature (${displayedRows.length})`}>
@@ -115,7 +135,7 @@ export function Registry({ jobs }: { jobs: Job[] }) {
                 {columns.map((column) => (
                   <th className="min-w-32 py-2 pr-2 align-top" key={column.key}>
                     <button className="mb-2 inline-flex items-center gap-1 font-semibold uppercase" onClick={() => sortBy(column.key)}>{column.label}<ArrowUpDown size={13} /></button>
-                    <label className="flex h-8 items-center gap-1 rounded-md border border-line bg-white px-2 normal-case"><Search size={12} /><input className="w-full text-xs outline-none" value={filters[column.key] || ""} onChange={(event) => setFilters({ ...filters, [column.key]: event.target.value })} placeholder="Cerca" /></label>
+                    <label className="flex h-8 items-center gap-1 rounded-md border border-line bg-white px-2 normal-case"><Search size={12} /><input className="w-full text-xs outline-none" value={filters[column.key] || ""} onChange={(event) => handleFilterChange(column.key, event.target.value)} placeholder="Cerca" /></label>
                   </th>
                 ))}
                 <th className="py-2">Azioni</th>

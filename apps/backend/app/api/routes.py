@@ -5,7 +5,7 @@ import re
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy import func, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.config import get_settings
 from app.db.session import get_db
@@ -252,7 +252,11 @@ def get_anomalies(job_id: int, db: Session = Depends(get_db)):
 
 @router.get("/anomalies")
 def list_all_anomalies(stato: str | None = "aperta", db: Session = Depends(get_db)):
-    query = db.query(Anomalia).join(LavoroVse, Anomalia.lavoro_id == LavoroVse.id)
+    query = (
+        db.query(Anomalia)
+        .options(joinedload(Anomalia.lavoro))
+        .join(LavoroVse, Anomalia.lavoro_id == LavoroVse.id)
+    )
     if stato:
         query = query.filter(Anomalia.stato == stato)
     rows = query.order_by(LavoroVse.titolo, Anomalia.created_at.desc()).all()
@@ -375,7 +379,13 @@ def apply_job_defaults(job_id: int, payload: dict = Body(default={}), db: Sessio
     if payload.get("save_as_job_default"):
         update_job_defaults(job, payload.get("values") or {})
     changed = []
-    for file_mtr in db.query(FileMtr).filter(FileMtr.lavoro_id == job_id).all():
+    file_mtrs = (
+        db.query(FileMtr)
+        .options(selectinload(FileMtr.verifiche), selectinload(FileMtr.matched_apparecchiature))
+        .filter(FileMtr.lavoro_id == job_id)
+        .all()
+    )
+    for file_mtr in file_mtrs:
         verification = _ensure_verification(db, file_mtr)
         fields = apply_defaults_to_verification(job, verification, payload.get("values") or {})
         if fields:
@@ -487,6 +497,7 @@ def get_registry_equipment_trend(equipment_id: int, db: Session = Depends(get_db
     history = []
     verifications = (
         db.query(VerificaVse)
+        .options(joinedload(VerificaVse.file_mtr).joinedload(FileMtr.lavoro))
         .join(FileMtr, VerificaVse.file_mtr_id == FileMtr.id)
         .join(LavoroVse, FileMtr.lavoro_id == LavoroVse.id)
         .filter(LavoroVse.cliente_nome == row.cliente_nome)

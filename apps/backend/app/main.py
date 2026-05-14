@@ -9,12 +9,14 @@ from app.db.session import Base, engine, ensure_schema, get_db
 settings = get_settings()
 
 app = FastAPI(title="gestione-vse", version="0.1.0")
+
+_cors_origins = list({settings.frontend_origin, *settings.cors_origins_list})
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin, "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Accept", "Accept-Language", "Content-Language", "Content-Type", "Authorization", "X-Requested-With"],
 )
 app.include_router(router, prefix="/api")
 
