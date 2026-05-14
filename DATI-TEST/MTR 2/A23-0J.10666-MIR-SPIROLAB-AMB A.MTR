@@ -1,0 +1,429 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<METRONFile Type="Record" Version="2.0.1">
+  <Application Name="Ansur" Version="2.9.7">
+    <Kernel Name="CTestExecutive" Version="1.2.0" />
+    <Interface Name="XML Parser" Version="2.0.1" />
+    <PlugIn Name="ESA615" Version="1.0.3" />
+  </Application>
+  <Template Name="IEC62353-Diretto Classe2-BF">
+    <TemplateData>
+      <TestElement ID="1">
+        <PlugIn Name="ESA615" TestID="100" />
+        <Info>
+          <Type>Autosequence</Type>
+          <Name>Autosequence</Name>
+          <Procedure Format="2"></Procedure>
+        </Info>
+        <ExpectedResult>
+          <Standard AlphaName="Ansur" CompleteName="User defined">
+            <Limit Key="::ST">
+              <Unit></Unit>
+            </Limit>
+          </Standard>
+        </ExpectedResult>
+        <PlugInData PlugIn="ESA615">
+          <EnableBtn Skip="True" NA="True" Step="True" />
+          <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+            <PlugInData PlugIn="ESA615">
+              <ModuleSetup>
+                <Module ID="1" Class="2" Leads="1" FirstLead="1">
+                  <Item Name="Module Code" Ord="1" Caption="A.P.Name" Required="True" Key="True">Funz.1</Item>
+                  <Item Name="Serial No." Ord="2" Caption="Serial No." Required="True" />
+                  <Item Name="Type" Ord="3" Caption="Type" />
+                </Module>
+              </ModuleSetup>
+            </PlugInData>
+          </ModuleOptions>
+          <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+            <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="0" TestVoltage="0" AppliedParts="0" />
+            <StopOnPC Before="False" After="False" />
+            <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+          </TestOptions>
+        </PlugInData>
+        <TestElement ID="2">
+          <PlugIn Name="AVPI" TestID="400" />
+          <Info>
+            <Type>General List</Type>
+            <Name>General List</Name>
+            <Procedure Format="2"></Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined" />
+          </ExpectedResult>
+          <PlugInData PlugIn="AVPI">
+            <TestGuideSettings>
+              <EnableBtn Skip="True" NA="True" />
+            </TestGuideSettings>
+            <Steps>
+              <Options>
+                <Option ID="1">Value</Option>
+              </Options>
+              <Step Key="S1" Type="6" Required="True">
+                <Description>Operator ID</Description>
+                <Option ID="1" />
+              </Step>
+            </Steps>
+          </PlugInData>
+        </TestElement>
+        <TestElement ID="3">
+          <PlugIn Name="ESA615" TestID="800" />
+          <Info>
+            <Type>Insulation Resistance </Type>
+            <Name>Insulation Resistance </Name>
+            <Procedure Format="2"></Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>MOhm</Unit>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+              <PlugInData PlugIn="ESA615">
+                <ModuleSetup />
+              </PlugInData>
+            </ModuleOptions>
+            <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+              <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="0" TestVoltage="0" AppliedParts="0" />
+              <StopOnPC Before="False" After="False" />
+              <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+            </TestOptions>
+          </PlugInData>
+          <TestElement ID="4">
+            <PlugIn Name="ESA615" TestID="830" />
+            <Info>
+              <Type>Insulation Resistance </Type>
+              <Parameter>Mains to Applied Parts </Parameter>
+              <Name>Mains to Applied Parts </Name>
+              <Procedure Format="2"></Procedure>
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::ST">
+                  <Unit>MOhm</Unit>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+        </TestElement>
+        <TestElement ID="5">
+          <PlugIn Name="ESA615" TestID="200" />
+          <Info>
+            <Type>Mains Voltage </Type>
+            <Name>Mains Voltage </Name>
+            <Procedure Format="2"></Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>V</Unit>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+              <PlugInData PlugIn="ESA615">
+                <ModuleSetup />
+              </PlugInData>
+            </ModuleOptions>
+            <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+              <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="0" TestVoltage="0" AppliedParts="0" />
+              <StopOnPC Before="False" After="False" />
+              <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+            </TestOptions>
+          </PlugInData>
+          <TestElement ID="6">
+            <PlugIn Name="ESA615" TestID="210" />
+            <Info>
+              <Type>Mains Voltage </Type>
+              <Parameter>Live to Neutral </Parameter>
+              <Name>Live to Neutral </Name>
+              <Procedure Format="2"></Procedure>
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::ST">
+                  <Unit>V</Unit>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+        </TestElement>
+        <TestElement ID="7">
+          <PlugIn Name="ESA615" TestID="400" />
+          <Info>
+            <Type>Equipment Current </Type>
+            <Name>Equipment Current </Name>
+            <Procedure Format="2"></Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>A</Unit>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+        </TestElement>
+        <TestElement ID="8">
+          <PlugIn Name="ESA615" TestID="1800" />
+          <Info>
+            <Type>Direct Applied Part Leakage </Type>
+            <Name>Direct Applied Part Leakage </Name>
+            <Procedure Format="2"></Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>uA</Unit>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+              <PlugInData PlugIn="ESA615">
+                <ModuleSetup />
+              </PlugInData>
+            </ModuleOptions>
+            <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+              <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="1" TestVoltage="0" AppliedParts="0" />
+              <StopOnPC Before="False" After="False" />
+              <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+            </TestOptions>
+          </PlugInData>
+          <TestElement ID="9">
+            <PlugIn Name="ESA615" TestID="1810" />
+            <Info>
+              <Type>Direct Applied Part Leakage </Type>
+              <Parameter>Normal Condition </Parameter>
+              <Name>Normal Condition </Name>
+              <Procedure Format="2"></Procedure>
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::BF_AC">
+                  <Unit>uA</Unit>
+                  <Value Type="High">5000</Value>
+                  <Value Type="Low"></Value>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+          <TestElement ID="10">
+            <PlugIn Name="ESA615" TestID="1820" />
+            <Info>
+              <Type>Direct Applied Part Leakage </Type>
+              <Parameter>Normal Condition-Reversed mains </Parameter>
+              <Name>Normal Condition-Reversed mains </Name>
+              <Procedure Format="2"></Procedure>
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::BF_AC">
+                  <Unit>uA</Unit>
+                  <Value Type="High">5000</Value>
+                  <Value Type="Low"></Value>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+        </TestElement>
+        <TestElement ID="11">
+          <PlugIn Name="ESA615" TestID="1700" />
+          <Info>
+            <Type>Direct Equipment Leakage </Type>
+            <Name>Direct Equipment Leakage </Name>
+            <Procedure Format="2"></Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>uA</Unit>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+              <PlugInData PlugIn="ESA615">
+                <ModuleSetup />
+              </PlugInData>
+            </ModuleOptions>
+            <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+              <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="0" TestVoltage="0" AppliedParts="0" />
+              <StopOnPC Before="False" After="False" />
+              <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+            </TestOptions>
+          </PlugInData>
+          <TestElement ID="12">
+            <PlugIn Name="ESA615" TestID="1720" />
+            <Info>
+              <Type>Direct Equipment Leakage </Type>
+              <Parameter>Open Earth </Parameter>
+              <Name>Open Earth </Name>
+              <Procedure Format="2"></Procedure>
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::ST">
+                  <Unit>uA</Unit>
+                  <Value Type="High">100</Value>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+          <TestElement ID="13">
+            <PlugIn Name="ESA615" TestID="1740" />
+            <Info>
+              <Type>Direct Equipment Leakage </Type>
+              <Parameter>Open Earth-Reversed Mains </Parameter>
+              <Name>Open Earth-Reversed Mains </Name>
+              <Procedure Format="2"></Procedure>
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::ST">
+                  <Unit>uA</Unit>
+                  <Value Type="High">100</Value>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+        </TestElement>
+      </TestElement>
+    </TemplateData>
+  </Template>
+  <Setup>
+    <ServiceEvents />
+    <Standard AlphaName="Ansur" CompleteName="User defined" />
+    <DUT>
+      <Item Name="Serial Number" Ord="1" Caption="Serial Number" Required="True" Key="True">A23-0J.10666</Item>
+      <Item Name="Equipment Number" Ord="2" Caption="Appliance Code">A23-0J.10666</Item>
+      <Item Name="Manufacturer" Ord="3" Caption="Manufacturer">MIR</Item>
+      <Item Name="Model" Ord="4" Caption="Model">SPIROLAB</Item>
+      <Item Name="Location" Ord="5" Caption="Location">AMB A</Item>
+      <Item Name="Other" Ord="6" Caption="Other">SPIROMETRO</Item>
+    </DUT>
+    <TestInstruments>
+      <MTIData PlugIn="ESA615" ID="1">
+        <Type>ESA615</Type>
+        <SerialNumber>7013015</SerialNumber>
+        <Version>3.01.03</Version>
+        <CalibrationDate>10/17/2025</CalibrationDate>
+      </MTIData>
+    </TestInstruments>
+  </Setup>
+  <Record>
+    <TestData>
+      <Status>Passed</Status>
+      <Date Year="2026" Month="04" Day="13" Hour="11" Min="13" Sec="29" />
+    </TestData>
+    <ResultData>
+      <ResultItem ElementID="1">
+        <Status>Passed</Status>
+        <Comment>Calibration Technician :: SLT
+Classification of Instrument :: II
+Name of the Standard :: IEC62353-Direct
+
+</Comment>
+        <PlugInData PlugIn="ESA615">
+          <ModuleSetup>
+            <Module ID="1" Class="2" Leads="1" FirstLead="1">
+              <Item Name="Module Code" Ord="1" Caption="A.P.Name" Required="True" Key="True">Funz.1</Item>
+              <Item Name="Serial No." Ord="2" Caption="Serial No." Required="True" />
+              <Item Name="Type" Ord="3" Caption="Type" />
+            </Module>
+          </ModuleSetup>
+        </PlugInData>
+        <ResultItem ElementID="2">
+          <Status>Passed</Status>
+          <Measurement Key="S1">
+            <Description>Operator ID</Description>
+            <Value Type="Text"></Value>
+            <Status>Passed</Status>
+            <StepType>6</StepType>
+          </Measurement>
+        </ResultItem>
+        <ResultItem ElementID="3">
+          <Status>Passed</Status>
+          <ResultItem MTI="1" ElementID="4">
+            <Status>Passed</Status>
+            <Measurement Key="::ST">
+              <Description>Mains to Applied Parts </Description>
+              <Value Type="Float">999</Value>
+              <Unit>MOhm</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+        </ResultItem>
+        <ResultItem ElementID="5">
+          <Status>Passed</Status>
+          <ResultItem MTI="1" ElementID="6">
+            <Status>Passed</Status>
+            <Measurement Key="::ST">
+              <Description>Live to Neutral </Description>
+              <Value Type="Float">228.1</Value>
+              <Unit>V</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+        </ResultItem>
+        <ResultItem MTI="1" ElementID="7">
+          <Status>Passed</Status>
+          <Measurement Key="::ST">
+            <Description>Equipment Current </Description>
+            <Value Type="Float">0.0</Value>
+            <Unit>A</Unit>
+            <Status>Passed</Status>
+          </Measurement>
+        </ResultItem>
+        <ResultItem ElementID="8">
+          <Status>Passed</Status>
+          <ResultItem MTI="1" ElementID="9">
+            <Status>Passed</Status>
+            <Measurement Key="::1::BF_AC">
+              <Description>Funz.1</Description>
+              <Value Type="Float">2.1</Value>
+              <Unit>uAAC</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+          <ResultItem MTI="1" ElementID="10">
+            <Status>Passed</Status>
+            <Measurement Key="::1::BF_AC">
+              <Description>Funz.1</Description>
+              <Value Type="Float">2.1</Value>
+              <Unit>uAAC</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+        </ResultItem>
+        <ResultItem ElementID="11">
+          <Status>Passed</Status>
+          <ResultItem MTI="1" ElementID="12">
+            <Status>Passed</Status>
+            <Measurement Key="::ST">
+              <Description>Open Earth </Description>
+              <Value Type="Float">1.2</Value>
+              <Unit>uA</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+          <ResultItem MTI="1" ElementID="13">
+            <Status>Passed</Status>
+            <Measurement Key="::ST">
+              <Description>Open Earth-Reversed Mains </Description>
+              <Value Type="Float">1.2</Value>
+              <Unit>uA</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+        </ResultItem>
+      </ResultItem>
+    </ResultData>
+  </Record>
+</METRONFile>

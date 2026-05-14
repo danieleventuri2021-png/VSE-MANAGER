@@ -1,0 +1,183 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<METRONFile Type="Record" Version="2.0.1">
+  <Application Name="Ansur" Version="2.9.7">
+    <Kernel Name="CTestExecutive" Version="1.2.0" />
+    <Interface Name="XML Parser" Version="2.0.1" />
+    <PlugIn Name="ESA615" Version="1.0.3" />
+  </Application>
+  <Template Name="IEC62353-Diretto Batteria-CF">
+    <TemplateData>
+      <TestElement ID="1">
+        <PlugIn Name="ESA615" TestID="100" />
+        <Info>
+          <Type>Autosequence</Type>
+          <Name>Autosequence</Name>
+          <Procedure Format="2"></Procedure>
+        </Info>
+        <ExpectedResult>
+          <Standard AlphaName="Ansur" CompleteName="User defined">
+            <Limit Key="::ST">
+              <Unit></Unit>
+            </Limit>
+          </Standard>
+        </ExpectedResult>
+        <PlugInData PlugIn="ESA615">
+          <EnableBtn Skip="True" NA="True" Step="True" />
+          <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+            <PlugInData PlugIn="ESA615">
+              <ModuleSetup>
+                <Module ID="1" Class="3" Leads="1" FirstLead="1">
+                  <Item Name="Module Code" Ord="1" Caption="A.P.Name" Required="True" Key="True">Funz.1</Item>
+                  <Item Name="Serial No." Ord="2" Caption="Serial No." Required="True" />
+                  <Item Name="Type" Ord="3" Caption="Type" />
+                </Module>
+              </ModuleSetup>
+            </PlugInData>
+          </ModuleOptions>
+          <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+            <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="0" TestVoltage="0" AppliedParts="0" />
+            <StopOnPC Before="False" After="False" />
+            <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+          </TestOptions>
+        </PlugInData>
+        <TestElement ID="2">
+          <PlugIn Name="AVPI" TestID="400" />
+          <Info>
+            <Type>General List</Type>
+            <Name>General List</Name>
+            <Procedure Format="2"></Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined" />
+          </ExpectedResult>
+          <PlugInData PlugIn="AVPI">
+            <TestGuideSettings>
+              <EnableBtn Skip="True" NA="True" />
+            </TestGuideSettings>
+            <Steps>
+              <Options>
+                <Option ID="1">Value</Option>
+              </Options>
+              <Step Key="S1" Type="6" Required="True">
+                <Description>Operator ID</Description>
+                <Option ID="1" />
+              </Step>
+            </Steps>
+          </PlugInData>
+        </TestElement>
+        <TestElement ID="3">
+          <PlugIn Name="ESA615" TestID="1800" />
+          <Info>
+            <Type>Direct Applied Part Leakage </Type>
+            <Name>Direct Applied Part Leakage </Name>
+            <Procedure Format="2"></Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>uA</Unit>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+              <PlugInData PlugIn="ESA615">
+                <ModuleSetup />
+              </PlugInData>
+            </ModuleOptions>
+            <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+              <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="1" TestVoltage="0" AppliedParts="0" />
+              <StopOnPC Before="False" After="False" />
+              <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+            </TestOptions>
+          </PlugInData>
+          <TestElement ID="4">
+            <PlugIn Name="ESA615" TestID="1810" />
+            <Info>
+              <Type>Direct Applied Part Leakage </Type>
+              <Parameter>Normal Condition </Parameter>
+              <Name>Normal Condition </Name>
+              <Procedure Format="2"></Procedure>
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::CF_AC">
+                  <Unit>uA</Unit>
+                  <Value Type="High">50</Value>
+                  <Value Type="Low"></Value>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+        </TestElement>
+      </TestElement>
+    </TemplateData>
+  </Template>
+  <Setup>
+    <ServiceEvents />
+    <Standard AlphaName="Ansur" CompleteName="User defined" />
+    <DUT>
+      <Item Name="Serial Number" Ord="1" Caption="Serial Number" Required="True" Key="True">241041976</Item>
+      <Item Name="Equipment Number" Ord="2" Caption="Appliance Code">241041976</Item>
+      <Item Name="Manufacturer" Ord="3" Caption="Manufacturer">PROGETTI</Item>
+      <Item Name="Model" Ord="4" Caption="Model">RESCUESAM</Item>
+      <Item Name="Location" Ord="5" Caption="Location">CARRELLO EMERGENZE</Item>
+      <Item Name="Other" Ord="6" Caption="Other">DEFIBRILLATORE AUTOMAT.</Item>
+    </DUT>
+    <TestInstruments>
+      <MTIData PlugIn="ESA615" ID="1">
+        <Type>ESA615</Type>
+        <SerialNumber>7013015</SerialNumber>
+        <Version>3.01.03</Version>
+        <CalibrationDate>10/17/2025</CalibrationDate>
+      </MTIData>
+    </TestInstruments>
+  </Setup>
+  <Record>
+    <TestData>
+      <Status>Passed</Status>
+      <Date Year="2026" Month="04" Day="14" Hour="11" Min="08" Sec="25" />
+    </TestData>
+    <ResultData>
+      <ResultItem ElementID="1">
+        <Status>Passed</Status>
+        <Comment>Calibration Technician :: SLT
+Classification of Instrument :: IP
+Name of the Standard :: IEC62353-Direct
+
+</Comment>
+        <PlugInData PlugIn="ESA615">
+          <ModuleSetup>
+            <Module ID="1" Class="3" Leads="1" FirstLead="1">
+              <Item Name="Module Code" Ord="1" Caption="A.P.Name" Required="True" Key="True">Funz.1</Item>
+              <Item Name="Serial No." Ord="2" Caption="Serial No." Required="True" />
+              <Item Name="Type" Ord="3" Caption="Type" />
+            </Module>
+          </ModuleSetup>
+        </PlugInData>
+        <ResultItem ElementID="2">
+          <Status>Passed</Status>
+          <Measurement Key="S1">
+            <Description>Operator ID</Description>
+            <Value Type="Text"></Value>
+            <Status>Passed</Status>
+            <StepType>6</StepType>
+          </Measurement>
+        </ResultItem>
+        <ResultItem ElementID="3">
+          <Status>Passed</Status>
+          <ResultItem MTI="1" ElementID="4">
+            <Status>Passed</Status>
+            <Measurement Key="::1::CF_AC">
+              <Description>Funz.1</Description>
+              <Value Type="Float">0.5</Value>
+              <Unit>uAAC</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+        </ResultItem>
+      </ResultItem>
+    </ResultData>
+  </Record>
+</METRONFile>

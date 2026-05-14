@@ -1,0 +1,339 @@
+<?xml version='1.0' encoding='utf-8'?>
+<METRONFile Type="Record" Version="2.0.1">
+  <Application Name="Ansur" Version="2.9.7">
+    <Kernel Name="CTestExecutive" Version="1.2.0" />
+    <Interface Name="XML Parser" Version="2.0.1" />
+    <PlugIn Name="ESA615" Version="1.0.3" />
+  </Application>
+  <Template Name="Installazione Permanente 3 Misure">
+    <TemplateData>
+      <TestElement ID="1">
+        <PlugIn Name="ESA615" TestID="100" />
+        <Info>
+          <Type>Autosequence</Type>
+          <Name>Autosequence</Name>
+          <Procedure Format="2" />
+        </Info>
+        <ExpectedResult>
+          <Standard AlphaName="Ansur" CompleteName="User defined">
+            <Limit Key="::ST">
+              <Unit />
+            </Limit>
+          </Standard>
+        </ExpectedResult>
+        <PlugInData PlugIn="ESA615">
+          <EnableBtn Skip="True" NA="True" Step="True" />
+          <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+            <PlugInData PlugIn="ESA615">
+              <ModuleSetup />
+            </PlugInData>
+          </ModuleOptions>
+          <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+            <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="0" TestVoltage="0" AppliedParts="0" />
+            <StopOnPC Before="False" After="False" />
+            <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+          </TestOptions>
+        </PlugInData>
+        <TestElement ID="2">
+          <PlugIn Name="AVPI" TestID="400" />
+          <Info>
+            <Type>General List</Type>
+            <Name>General List</Name>
+            <Procedure Format="2" />
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined" />
+          </ExpectedResult>
+          <PlugInData PlugIn="AVPI">
+            <TestGuideSettings>
+              <EnableBtn Skip="True" NA="True" />
+            </TestGuideSettings>
+            <Steps>
+              <Options>
+                <Option ID="1">Value</Option>
+              </Options>
+              <Step Key="S1" Type="6" Required="True">
+                <Description>Operator ID</Description>
+                <Option ID="1" />
+              </Step>
+            </Steps>
+          </PlugInData>
+        </TestElement>
+        <TestElement ID="3">
+          <PlugIn Name="ESA615" TestID="200" />
+          <Info>
+            <Type>Mains Voltage </Type>
+            <Name>Mains Voltage </Name>
+            <Procedure Format="2" />
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>V</Unit>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ModuleOptions Sep="False" Exp="False" Stop="False" Override="True">
+              <PlugInData PlugIn="ESA615">
+                <ModuleSetup />
+              </PlugInData>
+            </ModuleOptions>
+            <TestOptions MAPPolarity="0" PLConfiguration="0" Duration="3" PowerOff="0">
+              <Run Opt="True" HaltOnFail="True" MultiPE="False" TotalLeakage="False" MeasType="0" TestVoltage="0" AppliedParts="0" />
+              <StopOnPC Before="False" After="False" />
+              <Delay On="2" Off="0" PolaritySwitchingDelay="2" />
+            </TestOptions>
+          </PlugInData>
+          <TestElement ID="4">
+            <PlugIn Name="ESA615" TestID="210" />
+            <Info>
+              <Type>Mains Voltage </Type>
+              <Parameter>Live to Neutral </Parameter>
+              <Name>Live to Neutral </Name>
+              <Procedure Format="2" />
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::ST">
+                  <Unit>V</Unit>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+          <TestElement ID="5">
+            <PlugIn Name="ESA615" TestID="220" />
+            <Info>
+              <Type>Mains Voltage </Type>
+              <Parameter>Live to Earth </Parameter>
+              <Name>Live to Earth </Name>
+              <Procedure Format="2" />
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::ST">
+                  <Unit>V</Unit>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+          <TestElement ID="6">
+            <PlugIn Name="ESA615" TestID="230" />
+            <Info>
+              <Type>Mains Voltage </Type>
+              <Parameter>Neutral to Earth </Parameter>
+              <Name>Neutral to Earth </Name>
+              <Procedure Format="2" />
+            </Info>
+            <ExpectedResult>
+              <Standard AlphaName="Ansur" CompleteName="User defined">
+                <Limit Key="::ST">
+                  <Unit>V</Unit>
+                </Limit>
+              </Standard>
+            </ExpectedResult>
+          </TestElement>
+        </TestElement>
+        <TestElement ID="7">
+          <PlugIn Name="AVPI" TestID="500" />
+          <Info>
+            <Type>User message </Type>
+            <Name>User message </Name>
+            <Procedure Format="2">Posizionarsi sul primo punto di misura. Premere Continua per proseguire il test.</Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined" />
+          </ExpectedResult>
+        </TestElement>
+        <TestElement ID="8">
+          <PlugIn Name="ESA615" TestID="300" />
+          <Info>
+            <Type>Protective Earth Resistance </Type>
+            <Name>Protective Earth Resistance </Name>
+            <Procedure Format="2" />
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>Ohm</Unit>
+                <Value Type="High">.3</Value>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ResOptions MeasType="0" SkipCalibration="0" />
+          </PlugInData>
+        </TestElement>
+        <TestElement ID="9">
+          <PlugIn Name="AVPI" TestID="500" />
+          <Info>
+            <Type>User message </Type>
+            <Name>User message </Name>
+            <Procedure Format="2">Posizionarsi sul secondo punto di misura. Premere Continua per proseguire il test.</Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined" />
+          </ExpectedResult>
+        </TestElement>
+        <TestElement ID="10">
+          <PlugIn Name="ESA615" TestID="300" />
+          <Info>
+            <Type>Protective Earth Resistance </Type>
+            <Name>Protective Earth Resistance </Name>
+            <Procedure Format="2" />
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>Ohm</Unit>
+                <Value Type="High">.3</Value>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ResOptions MeasType="0" SkipCalibration="0" />
+          </PlugInData>
+        </TestElement>
+        <TestElement ID="11">
+          <PlugIn Name="AVPI" TestID="500" />
+          <Info>
+            <Type>User message </Type>
+            <Name>User message </Name>
+            <Procedure Format="2">Posizionarsi sul terzo punto di misura. Premere Continua per proseguire il test.</Procedure>
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined" />
+          </ExpectedResult>
+        </TestElement>
+        <TestElement ID="12">
+          <PlugIn Name="ESA615" TestID="300" />
+          <Info>
+            <Type>Protective Earth Resistance </Type>
+            <Name>Protective Earth Resistance </Name>
+            <Procedure Format="2" />
+          </Info>
+          <ExpectedResult>
+            <Standard AlphaName="Ansur" CompleteName="User defined">
+              <Limit Key="::ST">
+                <Unit>Ohm</Unit>
+                <Value Type="High">.3</Value>
+              </Limit>
+            </Standard>
+          </ExpectedResult>
+          <PlugInData PlugIn="ESA615">
+            <EnableBtn Skip="True" NA="True" Step="True" />
+            <ResOptions MeasType="0" SkipCalibration="0" />
+          </PlugInData>
+        </TestElement>
+      </TestElement>
+    </TemplateData>
+  </Template>
+  <Setup>
+    <ServiceEvents />
+    <Standard AlphaName="Ansur" CompleteName="User defined" />
+    <DUT>
+      <Item Name="Serial Number" Ord="1" Caption="Serial Number" Required="True" Key="True">71B02205</Item>
+      <Item Name="Equipment Number" Ord="2" Caption="Appliance Code">71B02205</Item>
+      <Item Name="Manufacturer" Ord="3" Caption="Manufacturer">ANTHOS</Item>
+      <Item Name="Model" Ord="4" Caption="Model">A3 PLUS CONTINENTAL</Item>
+      <Item Name="Location" Ord="5" Caption="Location">AMB G</Item>
+      <Item Name="Other" Ord="6" Caption="Other">RIUNITO DENTISTICO</Item>
+    </DUT>
+    <TestInstruments>
+      <MTIData PlugIn="ESA615" ID="1">
+        <Type>ESA615</Type>
+        <SerialNumber>7013015</SerialNumber>
+        <Version>3.01.03</Version>
+        <CalibrationDate>10/17/2025</CalibrationDate>
+      </MTIData>
+    </TestInstruments>
+  </Setup>
+  <Record>
+    <TestData>
+      <Status>Passed</Status>
+      <Date Year="2026" Month="04" Day="13" Hour="12" Min="16" Sec="30" />
+    </TestData>
+    <ResultData>
+      <ResultItem ElementID="1">
+        <Status>Passed</Status>
+        <Comment>Calibration Technician :: SLT
+Classification of Instrument :: 1
+Name of the Standard :: CUSTOM
+
+</Comment>
+        <PlugInData PlugIn="ESA615">
+          <ModuleSetup />
+        </PlugInData>
+        <ResultItem ElementID="2">
+          <Status>Passed</Status>
+          <Measurement Key="S1">
+            <Description>Operator ID</Description>
+            <Value Type="Text" />
+            <Status>Passed</Status>
+            <StepType>6</StepType>
+          </Measurement>
+        </ResultItem>
+        <ResultItem ElementID="3">
+          <Status>Passed</Status>
+          <ResultItem MTI="1" ElementID="4">
+            <Status>Passed</Status>
+            <Measurement Key="::ST">
+              <Description>Live to Neutral </Description>
+              <Value Type="Float">226.4</Value>
+              <Unit>V</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+          <ResultItem MTI="1" ElementID="5">
+            <Status>Passed</Status>
+            <Measurement Key="::ST">
+              <Description>Live to Earth </Description>
+              <Value Type="Float">226.9</Value>
+              <Unit>V</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+          <ResultItem MTI="1" ElementID="6">
+            <Status>Passed</Status>
+            <Measurement Key="::ST">
+              <Description>Neutral to Earth </Description>
+              <Value Type="Float">1.3</Value>
+              <Unit>V</Unit>
+              <Status>Passed</Status>
+            </Measurement>
+          </ResultItem>
+        </ResultItem>
+        <ResultItem MTI="1" ElementID="8">
+          <Status>Passed</Status>
+          <Measurement Key="::ST">
+            <Description>Protective Earth Resistance </Description>
+            <Value Type="Float">0.218</Value>
+            <Unit>Ohm</Unit>
+            <Status>Passed</Status>
+          </Measurement>
+        </ResultItem>
+        <ResultItem MTI="1" ElementID="10">
+          <Status>Passed</Status>
+          <Measurement Key="::ST">
+            <Description>Protective Earth Resistance </Description>
+            <Value Type="Float">0.213</Value>
+            <Unit>Ohm</Unit>
+            <Status>Passed</Status>
+          </Measurement>
+        </ResultItem>
+        <ResultItem MTI="1" ElementID="12">
+          <Status>Passed</Status>
+          <Measurement Key="::ST">
+            <Description>Protective Earth Resistance </Description>
+            <Value Type="Float">0.214</Value>
+            <Unit>Ohm</Unit>
+            <Status>Passed</Status>
+          </Measurement>
+        </ResultItem>
+      </ResultItem>
+    </ResultData>
+  </Record>
+</METRONFile>
