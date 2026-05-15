@@ -7,6 +7,7 @@ from app.services.ansur_template_detector import is_permanent_three_measure_temp
 from app.services.csv_parser import parse_esa615_csv
 from app.services.measurement_indexer import build_measurement_index
 from app.services.measurement_selector import find_worst_protective_earth
+from app.services.mtr_parser import parse_mtr_file
 from app.services.pdf_generator import build_pdf_filename, generate_vse_pdf
 from app.services.source_writer import save_to_source
 from app.services.vse_defaults import ansur_defaults, merge_final_data
@@ -71,6 +72,27 @@ def test_parse_minimal_mtr_xml():
     assert parsed["dut"]["serial_number"] == "SN1"
     assert parsed["ansur"]["is_permanent_three_measure_template"] is True
     assert len(parsed["measurements"]) == 3
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_malformed_xml_mtr_falls_back_to_text_parse():
+    tmp_path = workdir()
+    path = tmp_path / "broken.mtr"
+    path.write_text(
+        """<?xml version="1.0"?>
+<Ansur>
+Manufacturer: Acme
+Model: X1
+Serial Number: SN1
+\x01
+</Ansur>""",
+        encoding="utf-8",
+    )
+    parsed = parse_mtr_file(path)
+    assert parsed["nome_file"] == "broken.mtr"
+    assert parsed["produttore"] == "Acme"
+    assert parsed["matricola"] == "SN1"
+    assert parsed["normalized"]["source_type"] == "mtr"
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 

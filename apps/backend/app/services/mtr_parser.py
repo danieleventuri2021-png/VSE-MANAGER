@@ -25,7 +25,10 @@ def parse_mtr_file(path: str | Path) -> dict:
         try:
             parsed = _normalized_from_legacy_esa615(file_path, parse_mtr_legacy(file_path))
         except Exception:
-            parsed = parse_ansur_mtr(file_path)
+            try:
+                parsed = parse_ansur_mtr(file_path)
+            except Exception:
+                return _parse_text_mtr(file_path, content)
         return _legacy_from_normalized(parsed)
     if file_path.suffix.lower() == ".csv":
         try:
@@ -33,6 +36,10 @@ def parse_mtr_file(path: str | Path) -> dict:
         except Exception:
             parsed = parse_esa615_csv(file_path)
         return _legacy_from_normalized(parsed)
+    return _parse_text_mtr(file_path, content)
+
+
+def _parse_text_mtr(file_path: Path, content: str) -> dict:
     parsed = {"path": str(file_path), "nome_file": file_path.name, "raw_excerpt": content[:4000]}
     for field, patterns in FIELD_PATTERNS.items():
         parsed[field] = None
