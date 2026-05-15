@@ -56,6 +56,14 @@ class PasswordChangeRequest(BaseModel):
     new_password: str
 
 
+class UserUpdateRequest(BaseModel):
+    username: str | None = None
+    nome: str | None = None
+    ruolo: str | None = None
+    attivo: bool | None = None
+    password: str | None = None
+
+
 @auth_router.post("/auth/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = authenticate_user(db, payload.username.strip(), payload.password)
@@ -89,6 +97,60 @@ def create_user(payload: UserCreateRequest, current_user: Utente = Depends(get_c
     db.commit()
     db.refresh(user)
     return _user_dict(user)
+
+
+@auth_router.put("/auth/users/{user_id}")
+def update_user(user_id: int, payload: UserUpdateRequest, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    user = db.get(Utente, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+
+    username = payload.username.strip() if payload.username is not None else user.username
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Username minimo 3 caratteri")
+    existing = db.query(Utente).filter(Utente.username == username, Utente.id != user_id).one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="Username gia utilizzato")
+    if user.username == "admin" and username != "admin":
+        raise HTTPException(status_code=400, detail="L'utente admin non puo essere rinominato")
+
+    if payload.attivo is False and (user.username == "admin" or user.id == current_user.id):
+        raise HTTPException(status_code=400, detail="Non puoi disabilitare questo utente")
+    if payload.ruolo and payload.ruolo not in {"admin", "operatore"}:
+        raise HTTPException(status_code=400, detail="Ruolo non valido")
+    if payload.ruolo and user.username == "admin" and payload.ruolo != "admin":
+        raise HTTPException(status_code=400, detail="L'utente admin deve restare amministratore")
+    if payload.password is not None and payload.password and len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password minimo 6 caratteri")
+
+    user.username = username
+    if payload.nome is not None:
+        user.nome = payload.nome.strip() or None
+    if payload.ruolo:
+        user.ruolo = payload.ruolo
+    if payload.attivo is not None:
+        user.attivo = payload.attivo
+    if payload.password:
+        user.password_hash = hash_password(payload.password)
+    db.commit()
+    db.refresh(user)
+    return _user_dict(user)
+
+
+@auth_router.delete("/auth/users/{user_id}")
+def delete_user(user_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    user = db.get(Utente, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Utente non trovato")
+    if user.username == "admin":
+        raise HTTPException(status_code=400, detail="L'utente admin non puo essere cancellato")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Non puoi cancellare l'utente in uso")
+    db.delete(user)
+    db.commit()
+    return {"deleted": user_id}
 
 
 @auth_router.post("/auth/change-password")
@@ -1006,7 +1068,7 @@ def _first_value(*values: object) -> str:
 
 
 def _user_dict(row: Utente) -> dict:
-    return {"id": row.id, "username": row.username, "nome": row.nome, "ruolo": row.ruolo}
+    return {"id": row.id, "username": row.username, "nome": row.nome, "ruolo": row.ruolo, "attivo": row.attivo}
 
 
 def _require_admin(user: Utente) -> None:

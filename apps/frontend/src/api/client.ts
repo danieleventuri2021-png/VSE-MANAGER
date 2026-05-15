@@ -20,6 +20,7 @@ export type CurrentUser = {
   username: string;
   nome: string | null;
   ruolo: string;
+  attivo: boolean;
 };
 
 export type Job = {
@@ -79,6 +80,16 @@ export async function listUsers() {
 export async function createUser(payload: { username: string; password: string; nome?: string; ruolo?: string }) {
   const { data } = await api.post("/api/auth/users", payload);
   return data as CurrentUser;
+}
+
+export async function updateUser(userId: number, payload: { username?: string; nome?: string; ruolo?: string; attivo?: boolean; password?: string }) {
+  const { data } = await api.put(`/api/auth/users/${userId}`, payload);
+  return data as CurrentUser;
+}
+
+export async function deleteUser(userId: number) {
+  const { data } = await api.delete(`/api/auth/users/${userId}`);
+  return data;
 }
 
 export async function changePassword(payload: { old_password: string; new_password: string }) {

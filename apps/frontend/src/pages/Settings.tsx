@@ -1,12 +1,13 @@
-import { Save } from "lucide-react";
+import { KeyRound, Power, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { changePassword, createUser, listUsers, type CurrentUser } from "../api/client";
+import { changePassword, createUser, deleteUser, listUsers, updateUser, type CurrentUser } from "../api/client";
 import { Panel } from "../components/Panel";
 
 export function Settings() {
   const [users, setUsers] = useState<CurrentUser[]>([]);
   const [form, setForm] = useState({ username: "", nome: "", password: "", ruolo: "operatore" });
   const [passwordForm, setPasswordForm] = useState({ old_password: "", new_password: "" });
+  const [adminPasswords, setAdminPasswords] = useState<Record<number, string>>({});
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -43,6 +44,45 @@ export function Settings() {
     }
   }
 
+  async function toggleUser(user: CurrentUser) {
+    setMessage("");
+    setError("");
+    try {
+      await updateUser(user.id, { attivo: !user.attivo });
+      setMessage(user.attivo ? "Utente disabilitato" : "Utente riattivato");
+      await loadUsers();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || "Aggiornamento utente non riuscito.");
+    }
+  }
+
+  async function resetUserPassword(user: CurrentUser) {
+    const password = adminPasswords[user.id] || "";
+    if (password.length < 6) return;
+    setMessage("");
+    setError("");
+    try {
+      await updateUser(user.id, { password });
+      setAdminPasswords({ ...adminPasswords, [user.id]: "" });
+      setMessage(`Password aggiornata per ${user.username}`);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || "Cambio password utente non riuscito.");
+    }
+  }
+
+  async function removeUser(user: CurrentUser) {
+    if (!window.confirm(`Cancellare l'utente ${user.username}?`)) return;
+    setMessage("");
+    setError("");
+    try {
+      await deleteUser(user.id);
+      setMessage("Utente cancellato");
+      await loadUsers();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || "Cancellazione utente non riuscita.");
+    }
+  }
+
   useEffect(() => {
     loadUsers();
   }, []);
@@ -63,8 +103,37 @@ export function Settings() {
       </Panel>
       <Panel title="Utenti">
         <div className="grid gap-3">
-          <div className="grid gap-2 text-sm">
-            {users.map((user) => <Row key={user.id} label={user.username} value={`${user.nome || "-"} - ${user.ruolo}`} />)}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs uppercase text-slate-500">
+                <tr><th className="py-2">Utente</th><th>Nome</th><th>Ruolo</th><th>Stato</th><th>Password</th><th className="text-right">Azioni</th></tr>
+              </thead>
+              <tbody>
+                {users.map((user) => {
+                  const lockedAdmin = user.username === "admin";
+                  return (
+                    <tr className="border-t border-line" key={user.id}>
+                      <td className="py-2 font-medium">{user.username}</td>
+                      <td>{user.nome || "-"}</td>
+                      <td>{user.ruolo}</td>
+                      <td><span className={`rounded-md px-2 py-1 text-xs ${user.attivo ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{user.attivo ? "attivo" : "disabilitato"}</span></td>
+                      <td>
+                        <div className="flex min-w-52 gap-2">
+                          <input className="h-9 w-full rounded-md border border-line px-2 text-sm" placeholder="Nuova password" type="password" value={adminPasswords[user.id] || ""} onChange={(event) => setAdminPasswords({ ...adminPasswords, [user.id]: event.target.value })} />
+                          <button className="inline-flex h-9 items-center rounded-md border border-line px-2 disabled:cursor-not-allowed disabled:opacity-60" title="Aggiorna password" onClick={() => resetUserPassword(user)} disabled={(adminPasswords[user.id] || "").length < 6}><KeyRound size={15} /></button>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex justify-end gap-2">
+                          <button className="inline-flex h-9 items-center gap-1 rounded-md border border-line px-2 text-xs disabled:cursor-not-allowed disabled:opacity-60" onClick={() => toggleUser(user)} disabled={lockedAdmin}><Power size={14} /> {user.attivo ? "Disabilita" : "Riattiva"}</button>
+                          <button className="inline-flex h-9 items-center gap-1 rounded-md border border-red-200 px-2 text-xs text-red-700 disabled:cursor-not-allowed disabled:opacity-60" onClick={() => removeUser(user)} disabled={lockedAdmin}><Trash2 size={14} /> Cancella</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
             {!users.length && <p className="text-sm text-slate-500">Nessun utente visibile.</p>}
           </div>
           <div className="grid gap-2 border-t border-line pt-3 md:grid-cols-2">
