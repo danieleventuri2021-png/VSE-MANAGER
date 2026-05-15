@@ -73,6 +73,13 @@ export async function uploadExcel(jobId: number, file: File) {
   return data as Job;
 }
 
+export async function uploadJobAsset(jobId: number, field: "firma_path" | "template_pdf" | "intestazione_pdf", file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post(`/api/jobs/${jobId}/asset`, form, { params: { field } });
+  return data as Job;
+}
+
 export async function importMtrFolder(jobId: number, folderPath: string) {
   const { data } = await api.post(`/api/jobs/${jobId}/mtr-folder`, { folder_path: folderPath });
   return data as Job;

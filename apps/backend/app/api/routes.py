@@ -147,6 +147,32 @@ def upload_excel(job_id: int, file: UploadFile = File(...), db: Session = Depend
     return job
 
 
+@router.post("/jobs/{job_id}/asset", response_model=JobRead)
+def upload_job_asset(job_id: int, field: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id)
+    target_field = {
+        "firma_path": "firma_default_path",
+        "template_pdf": "template_pdf",
+        "intestazione_pdf": "intestazione_pdf",
+    }.get(field)
+    if not target_field:
+        raise HTTPException(status_code=400, detail="Campo file non valido")
+    filename = Path(file.filename or "file").name
+    if not filename or filename in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Nome file non valido")
+    settings = get_settings()
+    target_dir = Path(settings.template_dir) / f"job_{job_id}"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / filename
+    with target.open("wb") as handle:
+        shutil.copyfileobj(file.file, handle)
+    setattr(job, target_field, str(target))
+    log_event(db, "job_asset_uploaded", f"File impostazioni lavoro caricato: {filename}", lavoro_id=job_id, dettagli={"field": field, "path": str(target)})
+    db.commit()
+    db.refresh(job)
+    return job
+
+
 @router.post("/jobs/{job_id}/mtr-folder", response_model=JobRead)
 def import_mtr_folder(job_id: int, payload: FolderRequest, db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id)
