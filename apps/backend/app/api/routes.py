@@ -3,6 +3,7 @@ import shutil
 import zipfile
 from datetime import datetime
 import re
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
@@ -105,7 +106,7 @@ def change_password(payload: PasswordChangeRequest, current_user: Utente = Depen
 @router.get("/system/ports", response_model=SystemPorts)
 def system_ports():
     settings = get_settings()
-    return check_ports(settings.backend_port, int(settings.frontend_origin.rsplit(":", 1)[-1]))
+    return check_ports(settings.backend_port, _origin_port(settings.frontend_origin))
 
 
 @router.get("/dashboard/status")
@@ -783,6 +784,15 @@ def _unique_archive_name(filename: str, used_names: set[str]) -> str:
             used_names.add(candidate)
             return candidate
         counter += 1
+
+
+def _origin_port(origin: str) -> int:
+    parsed = urlparse(origin)
+    if parsed.port:
+        return parsed.port
+    if parsed.scheme == "https":
+        return 443
+    return 80
 
 
 def database_status(db: Session) -> bool:
