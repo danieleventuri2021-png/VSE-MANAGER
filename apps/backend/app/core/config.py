@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     db_max_overflow: int = 10
     db_pool_recycle: int = 3600
     db_pool_timeout: int = 30
+    auth_secret_key: str = "cambia-questa-chiave-vse-manager"
+    auth_token_expire_minutes: int = 720
+    admin_username: str = "admin"
+    admin_password: str = "admin"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

@@ -4,12 +4,13 @@ from datetime import datetime
 import re
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Response, UploadFile
+from pydantic import BaseModel
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models import Anomalia, Apparecchiatura, FileMtr, LavoroVse, LogOperativo, PdfGenerato, RegistroApparecchiatura, VerificaVse
+from app.models import Anomalia, Apparecchiatura, FileMtr, LavoroVse, LogOperativo, PdfGenerato, RegistroApparecchiatura, Utente, VerificaVse
 from app.schemas.jobs import ApplyResult, FolderRequest, JobCreate, JobRead, PdfGenerateRequest, SystemPorts
 from app.services.anomaly_service import create_anomaly
 from app.services.backup_service import create_backup
@@ -25,12 +26,78 @@ from app.services.mtr_parser import scan_mtr_folder
 from app.services.mtr_writer import write_mtr_updates
 from app.services.port_checker import check_ports
 from app.services.session_defaults_service import apply_defaults_to_verification, update_job_defaults
+from app.services.auth_service import authenticate_user, create_access_token, get_current_user, hash_password, verify_password
 from app.services.source_writer import save_to_source
 from app.services.vse_defaults import ansur_defaults, job_defaults, source_data
 
 router = APIRouter()
+auth_router = APIRouter()
 
 EQUIPMENT_FIELDS = ("row_index", "matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "raw_data")
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserCreateRequest(BaseModel):
+    username: str
+    password: str
+    nome: str | None = None
+    ruolo: str = "operatore"
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+@auth_router.post("/auth/login")
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = authenticate_user(db, payload.username.strip(), payload.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Username o password non validi")
+    return {"access_token": create_access_token(user), "token_type": "bearer", "user": _user_dict(user)}
+
+
+@auth_router.get("/auth/me")
+def me(user: Utente = Depends(get_current_user)):
+    return _user_dict(user)
+
+
+@auth_router.get("/auth/users")
+def list_users(current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    return [_user_dict(user) for user in db.query(Utente).order_by(Utente.username).all()]
+
+
+@auth_router.post("/auth/users")
+def create_user(payload: UserCreateRequest, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _require_admin(current_user)
+    username = payload.username.strip()
+    if len(username) < 3 or len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Utente minimo 3 caratteri e password minimo 6 caratteri")
+    existing = db.query(Utente).filter(Utente.username == username).one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="Utente gia esistente")
+    user = Utente(username=username, password_hash=hash_password(payload.password), nome=payload.nome, ruolo=payload.ruolo or "operatore", attivo=True)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _user_dict(user)
+
+
+@auth_router.post("/auth/change-password")
+def change_password(payload: PasswordChangeRequest, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="La nuova password deve avere almeno 6 caratteri")
+    user = db.get(Utente, current_user.id)
+    if not user or not verify_password(payload.old_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Password attuale non valida")
+    user.password_hash = hash_password(payload.new_password)
+    db.commit()
+    return {"changed": True}
 
 
 @router.get("/system/ports", response_model=SystemPorts)
@@ -766,3 +833,12 @@ def _first_value(*values: object) -> str:
         if value not in (None, ""):
             return str(value)
     return ""
+
+
+def _user_dict(row: Utente) -> dict:
+    return {"id": row.id, "username": row.username, "nome": row.nome, "ruolo": row.ruolo}
+
+
+def _require_admin(user: Utente) -> None:
+    if user.ruolo != "admin":
+        raise HTTPException(status_code=403, detail="Permesso riservato agli amministratori")

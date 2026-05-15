@@ -1,5 +1,6 @@
-import { Activity, AlertTriangle, ClipboardCheck, ClipboardList, Database, FileInput, FileText, Gauge, Link2, Plus, Settings, ScrollText, SlidersHorizontal } from "lucide-react";
+import { Activity, AlertTriangle, ClipboardCheck, ClipboardList, Database, FileInput, FileText, Gauge, Link2, LogOut, Plus, Settings, ScrollText, SlidersHorizontal } from "lucide-react";
 import type React from "react";
+import type { CurrentUser } from "../api/client";
 
 type View = "dashboard" | "jobs" | "new" | "import" | "matches" | "review" | "pdf" | "registry" | "job-settings" | "anomalies" | "logs" | "settings";
 
@@ -18,7 +19,7 @@ const items: { id: View; label: string; icon: React.ComponentType<{ size?: numbe
   { id: "settings", label: "Impostazioni", icon: Settings },
 ];
 
-export function Layout({ view, setView, children }: { view: View; setView: (view: View) => void; children: React.ReactNode }) {
+export function Layout({ view, setView, user, onLogout, children }: { view: View; setView: (view: View) => void; user: CurrentUser; onLogout: () => void; children: React.ReactNode }) {
   return (
     <div className="min-h-screen lg:flex">
       <aside className="border-r border-line bg-white lg:w-64">
@@ -51,6 +52,15 @@ export function Layout({ view, setView, children }: { view: View; setView: (view
           <div>
             <h1 className="text-lg font-semibold text-ink">Gestione verifiche elettriche</h1>
             <p className="text-xs text-slate-500">Import Excel, analisi MTR, anomalie e rinomina controllata</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-sm font-medium text-ink">{user.nome || user.username}</div>
+              <div className="text-xs text-slate-500">{user.ruolo}</div>
+            </div>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm text-slate-700 hover:bg-slate-100" onClick={onLogout}>
+              <LogOut size={16} /> Esci
+            </button>
           </div>
         </header>
         <div className="p-5">{children}</div>

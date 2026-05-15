@@ -1,7 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
-import { getHealth, getJobs, getPorts, type Job } from "./api/client";
+import { clearStoredToken, getHealth, getJobs, getMe, getPorts, getStoredToken, type CurrentUser, type Job } from "./api/client";
 import { Layout, type View } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
+import { Login } from "./pages/Login";
 
 const Anomalies = lazy(() => import("./pages/Anomalies").then((m) => ({ default: m.Anomalies })));
 const ImportPage = lazy(() => import("./pages/ImportPage").then((m) => ({ default: m.ImportPage })));
@@ -23,6 +24,8 @@ export default function App() {
   const [ports, setPorts] = useState<any>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState("");
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const refresh = useCallback(async () => {
     setError("");
@@ -31,7 +34,7 @@ export default function App() {
     if (portsResult.status === "fulfilled") setPorts(portsResult.value);
     if (jobsResult.status === "fulfilled") setJobs(jobsResult.value);
     if (healthResult.status === "rejected") setError("Backend non raggiungibile");
-    else if (jobsResult.status === "rejected") setError("Database non raggiungibile o schema non inizializzato");
+    else if (jobsResult.status === "rejected") setError("Sessione scaduta o database non raggiungibile");
   }, []);
 
   const openAnomalies = useCallback(() => setView("anomalies"), []);
@@ -39,15 +42,51 @@ export default function App() {
   useEffect(() => {
     let active = true;
     (async () => {
-      if (active) await refresh();
+      const token = getStoredToken();
+      if (!token) {
+        if (active) setCheckingAuth(false);
+        return;
+      }
+      try {
+        const current = await getMe();
+        if (!active) return;
+        setUser(current);
+        await refresh();
+      } catch {
+        clearStoredToken();
+      } finally {
+        if (active) setCheckingAuth(false);
+      }
     })();
     return () => {
       active = false;
     };
   }, [refresh]);
 
+  function handleLogin(current: CurrentUser) {
+    setUser(current);
+    refresh();
+  }
+
+  function logout() {
+    clearStoredToken();
+    setUser(null);
+    setHealth(null);
+    setPorts(null);
+    setJobs([]);
+    setView("dashboard");
+  }
+
+  if (checkingAuth) {
+    return <div className="grid min-h-screen place-items-center bg-slate-100 text-sm text-slate-500">Caricamento...</div>;
+  }
+
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
-    <Layout view={view} setView={setView}>
+    <Layout view={view} setView={setView} user={user} onLogout={logout}>
       {error && <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
       <Suspense fallback={fallback}>
         {view === "dashboard" && <Dashboard health={health} ports={ports} jobs={jobs} onOpenAnomalies={openAnomalies} />}

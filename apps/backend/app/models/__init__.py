@@ -9,6 +9,7 @@ from app.models.entities import (
     PdfGenerato,
     RegistroApparecchiatura,
     Presidio,
+    Utente,
     VerificaVse,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "PdfGenerato",
     "RegistroApparecchiatura",
     "Presidio",
+    "Utente",
     "VerificaVse",
 ]

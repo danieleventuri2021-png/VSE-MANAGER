@@ -5,6 +5,23 @@ export const api = axios.create({
   timeout: 15000,
 });
 
+const TOKEN_KEY = "vse_auth_token";
+
+api.interceptors.request.use((config) => {
+  const token = getStoredToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export type CurrentUser = {
+  id: number;
+  username: string;
+  nome: string | null;
+  ruolo: string;
+};
+
 export type Job = {
   id: number;
   titolo: string;
@@ -28,6 +45,44 @@ export type Job = {
 
 export async function getHealth() {
   const { data } = await api.get("/health");
+  return data;
+}
+
+export function getStoredToken() {
+  return window.localStorage.getItem(TOKEN_KEY);
+}
+
+export function setStoredToken(token: string) {
+  window.localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearStoredToken() {
+  window.localStorage.removeItem(TOKEN_KEY);
+}
+
+export async function login(username: string, password: string) {
+  const { data } = await api.post("/api/auth/login", { username, password });
+  setStoredToken(data.access_token);
+  return data.user as CurrentUser;
+}
+
+export async function getMe() {
+  const { data } = await api.get("/api/auth/me");
+  return data as CurrentUser;
+}
+
+export async function listUsers() {
+  const { data } = await api.get("/api/auth/users");
+  return data as CurrentUser[];
+}
+
+export async function createUser(payload: { username: string; password: string; nome?: string; ruolo?: string }) {
+  const { data } = await api.post("/api/auth/users", payload);
+  return data as CurrentUser;
+}
+
+export async function changePassword(payload: { old_password: string; new_password: string }) {
+  const { data } = await api.post("/api/auth/change-password", payload);
   return data;
 }
 

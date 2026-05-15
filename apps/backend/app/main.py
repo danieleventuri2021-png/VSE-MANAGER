@@ -2,9 +2,10 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app.api.routes import dashboard_counts, database_status, router
+from app.api.routes import auth_router, dashboard_counts, database_status, router
 from app.core.config import get_settings
-from app.db.session import Base, engine, ensure_schema, get_db
+from app.db.session import Base, SessionLocal, engine, ensure_schema, get_db
+from app.services.auth_service import ensure_default_admin, get_current_user
 
 settings = get_settings()
 
@@ -18,7 +19,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Accept", "Accept-Language", "Content-Language", "Content-Type", "Authorization", "X-Requested-With"],
 )
-app.include_router(router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(router, prefix="/api", dependencies=[Depends(get_current_user)])
 
 
 @app.on_event("startup")
@@ -26,6 +28,8 @@ def startup() -> None:
     try:
         ensure_schema()
         Base.metadata.create_all(bind=engine)
+        with SessionLocal() as db:
+            ensure_default_admin(db)
         app.state.database_ready = True
         app.state.database_error = None
     except Exception as exc:

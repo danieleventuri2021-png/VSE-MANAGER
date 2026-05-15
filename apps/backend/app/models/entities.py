@@ -37,6 +37,18 @@ class Presidio(Base, TimestampMixin):
     lavori: Mapped[list["LavoroVse"]] = relationship(back_populates="presidio")
 
 
+class Utente(Base, TimestampMixin):
+    __tablename__ = "utenti"
+    __table_args__ = {"schema": SCHEMA}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    nome: Mapped[str | None] = mapped_column(String(255))
+    ruolo: Mapped[str] = mapped_column(String(50), default="admin", nullable=False)
+    attivo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
 class LavoroVse(Base, TimestampMixin):
     __tablename__ = "lavori_vse"
     __table_args__ = {"schema": SCHEMA}
