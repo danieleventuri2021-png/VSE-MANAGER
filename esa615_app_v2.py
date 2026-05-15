@@ -31,22 +31,30 @@ def _first_existing_font(*paths):
 
 
 def pdf_font_paths():
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    bundled_fonts = os.path.join(root_dir, "data", "fonts")
     win_fonts = os.environ.get("WINDIR", r"C:\Windows")
     win_fonts = os.path.join(win_fonts, "Fonts")
     regular = _first_existing_font(
+        os.path.join(bundled_fonts, "calibri.ttf"),
         os.path.join(win_fonts, "calibri.ttf"),
+        "/usr/share/fonts/truetype/crosextra/Carlito-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
     )
     bold = _first_existing_font(
+        os.path.join(bundled_fonts, "calibrib.ttf"),
         os.path.join(win_fonts, "calibrib.ttf"),
+        "/usr/share/fonts/truetype/crosextra/Carlito-Bold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
     )
     italic = _first_existing_font(
+        os.path.join(bundled_fonts, "calibrii.ttf"),
         os.path.join(win_fonts, "calibrii.ttf"),
+        "/usr/share/fonts/truetype/crosextra/Carlito-Italic.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSansOblique.ttf",
