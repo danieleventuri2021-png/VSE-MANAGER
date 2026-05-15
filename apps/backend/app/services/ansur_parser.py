@@ -5,11 +5,12 @@ from typing import Any
 
 from app.services.ansur_template_detector import is_permanent_three_measure_template
 from app.services.measurement_indexer import build_measurement_index
+from app.services.xml_cleaner import read_xml_document_text
 
 
 def parse_ansur_mtr(path: str | Path) -> dict[str, Any]:
     file_path = Path(path)
-    root = ET.parse(file_path).getroot()
+    root = ET.fromstring(read_xml_document_text(file_path))
     items = _all_items(root)
     measurements = _measurements(root)
     template_name = _first_text(root, ("TemplateName", "ProcedureName", "TestTemplate", "Template")) or _attr_contains(root, "template")

@@ -96,6 +96,28 @@ Serial Number: SN1
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
+def test_xml_mtr_with_trailing_update_text_keeps_measurements():
+    tmp_path = workdir()
+    path = tmp_path / "trailing.mtr"
+    path.write_text(
+        """<?xml version="1.0"?>
+<Ansur TemplateName="IEC62353-Diretto Classe1-BF">
+  <Setup><DUT><Item Name="Manufacturer">Acme</Item><Item Name="Serial Number">SN1</Item></DUT></Setup>
+  <ResultItem ElementID="PE1"><Measurement><Description>Protective Earth Resistance</Description><Value>0.10</Value><Unit>ohm</Unit><Status>Passed</Status></Measurement></ResultItem>
+</Ansur>
+
+# Aggiornamento gestione-vse
+id: 129
+""",
+        encoding="utf-8",
+    )
+    parsed = parse_mtr_file(path)
+    assert parsed["produttore"] == "Acme"
+    assert parsed["matricola"] == "SN1"
+    assert len(parsed["normalized"]["measurements"]) == 1
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 def test_parse_minimal_csv():
     tmp_path = workdir()
     path = tmp_path / "sample.csv"

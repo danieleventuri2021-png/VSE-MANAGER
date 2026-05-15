@@ -7,6 +7,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 from app.services.mtr_parser import parse_mtr_file
+from app.services.xml_cleaner import read_xml_document_text
 
 
 SAFE_FIELDS = {
@@ -93,7 +94,7 @@ def _normalize_updates(updates: dict) -> dict:
 
 def _save_xml_or_text_mtr(source: Path, updates: dict) -> list[str]:
     content = source.read_text(encoding="utf-8", errors="ignore")
-    if content.lstrip().startswith("<"):
+    if content.lstrip("\ufeff\r\n\t ").startswith("<"):
         try:
             return _save_xml(source, updates)
         except ET.ParseError:
@@ -102,8 +103,7 @@ def _save_xml_or_text_mtr(source: Path, updates: dict) -> list[str]:
 
 
 def _save_xml(source: Path, updates: dict) -> list[str]:
-    tree = ET.parse(source)
-    root = tree.getroot()
+    root = ET.fromstring(read_xml_document_text(source))
     changed = []
     for item in root.iter():
         if item.tag.rsplit("}", 1)[-1].lower() != "item":

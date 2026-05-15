@@ -1,7 +1,10 @@
 from pathlib import Path
 import importlib.util
+import tempfile
 from types import ModuleType
 from typing import Any
+
+from app.services.xml_cleaner import read_xml_document_text
 
 
 _MODULE: ModuleType | None = None
@@ -25,7 +28,21 @@ def _legacy_module() -> ModuleType:
 
 
 def parse_mtr_legacy(path: str | Path) -> dict[str, Any]:
-    return _legacy_module().parse_mtr(str(path))
+    module = _legacy_module()
+    try:
+        return module.parse_mtr(str(path))
+    except Exception:
+        clean_text = read_xml_document_text(path)
+        with tempfile.NamedTemporaryFile("w", suffix=Path(path).suffix or ".mtr", encoding="utf-8", delete=False) as handle:
+            handle.write(clean_text)
+            temp_path = Path(handle.name)
+        try:
+            parsed = module.parse_mtr(str(temp_path))
+            parsed["sourceFile"] = Path(path).name
+            parsed["sourceFilePath"] = str(path)
+            return parsed
+        finally:
+            temp_path.unlink(missing_ok=True)
 
 
 def parse_csv_legacy(path: str | Path) -> dict[str, Any]:

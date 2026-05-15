@@ -73,6 +73,7 @@ def generate_one_pdf(db: Session, job: LavoroVse, file_mtr: FileMtr, output_dir:
     data = build_final_pdf_data(job, file_mtr, verification)
     header = _header_path(job)
     generated = generate_vse_pdf(data, output_dir, job.template_pdf or "standard", header)
+    _delete_existing_pdf_rows(db, job.id, file_mtr.id)
     row = PdfGenerato(lavoro_id=job.id, verifica_id=verification.id if verification else None, file_mtr_id=file_mtr.id, percorso_pdf=generated["path"], nome_pdf=generated["filename"], template_pdf=generated["template_pdf"], esito="generato")
     db.add(row)
     if verification:
@@ -82,6 +83,10 @@ def generate_one_pdf(db: Session, job: LavoroVse, file_mtr: FileMtr, output_dir:
 
 def generate_all_pdfs(db: Session, job: LavoroVse, output_dir: str | Path) -> dict:
     report = {"total": 0, "generated": 0, "errors": [], "skipped": [], "anomalies": []}
+    output = Path(output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    _delete_job_pdf_rows(db, job.id)
+    db.flush()
     files = (
         db.query(FileMtr)
         .options(selectinload(FileMtr.verifiche), selectinload(FileMtr.matched_apparecchiature))
@@ -124,3 +129,28 @@ def _header_path(job: LavoroVse) -> str | None:
         if candidate.exists():
             return str(candidate)
     return None
+
+
+def _delete_job_pdf_rows(db: Session, job_id: int) -> None:
+    rows = db.query(PdfGenerato).filter(PdfGenerato.lavoro_id == job_id).all()
+    for row in rows:
+        _delete_pdf_file(row.percorso_pdf)
+        db.delete(row)
+
+
+def _delete_existing_pdf_rows(db: Session, job_id: int, file_mtr_id: int) -> None:
+    rows = db.query(PdfGenerato).filter(PdfGenerato.lavoro_id == job_id, PdfGenerato.file_mtr_id == file_mtr_id).all()
+    for row in rows:
+        _delete_pdf_file(row.percorso_pdf)
+        db.delete(row)
+
+
+def _delete_pdf_file(path: str | None) -> None:
+    if not path:
+        return
+    try:
+        pdf_path = Path(path)
+        if pdf_path.exists() and pdf_path.is_file():
+            pdf_path.unlink()
+    except OSError:
+        logger.warning("Impossibile cancellare PDF esistente: %s", path)

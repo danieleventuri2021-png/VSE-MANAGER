@@ -1,11 +1,9 @@
 from pathlib import Path
 
+from app.services.source_writer import save_to_source
+
 
 def write_mtr_updates(path: str | Path, updates: dict) -> None:
     file_path = Path(path)
-    original = file_path.read_text(encoding="utf-8", errors="ignore")
-    lines = [original.rstrip(), "", "# Aggiornamento gestione-vse"]
-    for key, value in updates.items():
-        if value is not None:
-            lines.append(f"{key}: {value}")
-    file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    backup_root = file_path.parent / ".gestione_vse_backups"
+    save_to_source(file_path, updates, backup_root)
