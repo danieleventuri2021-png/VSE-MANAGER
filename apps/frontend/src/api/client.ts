@@ -145,6 +145,13 @@ export async function importMtrFolder(jobId: number, folderPath: string) {
   return data as Job;
 }
 
+export async function uploadMtrFiles(jobId: number, files: File[]) {
+  const form = new FormData();
+  files.forEach((file) => form.append("files", file));
+  const { data } = await api.post(`/api/jobs/${jobId}/mtr-upload`, form, { timeout: 300000 });
+  return data as Job;
+}
+
 export async function analyzeJob(jobId: number) {
   const { data } = await api.post(`/api/jobs/${jobId}/analyze`);
   return data as Job;
@@ -202,6 +209,27 @@ export async function generateAllPdfs(jobId: number, outputDir?: string) {
 export async function listPdfs(jobId: number) {
   const { data } = await api.get(`/api/jobs/${jobId}/pdf`);
   return data;
+}
+
+export async function downloadGeneratedPdf(jobId: number, pdfId: number, filename: string) {
+  const { data } = await api.get(`/api/jobs/${jobId}/pdf/${pdfId}/download`, { responseType: "blob", timeout: 300000 });
+  downloadBlob(data, filename || `pdf_${pdfId}.pdf`);
+}
+
+export async function downloadAllGeneratedPdfs(jobId: number) {
+  const { data } = await api.get(`/api/jobs/${jobId}/pdf/download-all`, { responseType: "blob", timeout: 300000 });
+  downloadBlob(data, `pdf_lavoro_${jobId}.zip`);
+}
+
+function downloadBlob(data: Blob, filename: string) {
+  const url = window.URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 export async function syncRegistry(jobId: number) {

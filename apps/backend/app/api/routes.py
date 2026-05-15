@@ -1,9 +1,11 @@
 from pathlib import Path
 import shutil
+import zipfile
 from datetime import datetime
 import re
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Response, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -22,7 +24,7 @@ from app.services.excel_importer import import_excel
 from app.services.file_renamer import rename_mtr
 from app.services.log_service import log_event
 from app.services.matcher import match_records
-from app.services.mtr_parser import scan_mtr_folder
+from app.services.mtr_parser import parse_mtr_file, scan_mtr_folder
 from app.services.mtr_writer import write_mtr_updates
 from app.services.port_checker import check_ports
 from app.services.session_defaults_service import apply_defaults_to_verification, update_job_defaults
@@ -249,33 +251,50 @@ def upload_job_asset(job_id: int, field: str, file: UploadFile = File(...), curr
 def import_mtr_folder(job_id: int, payload: FolderRequest, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id, current_user)
     parsed_files = scan_mtr_folder(payload.folder_path)
-    db.query(FileMtr).filter(FileMtr.lavoro_id == job_id).delete()
-    for parsed in parsed_files:
-        db.add(
-            FileMtr(
-                lavoro_id=job_id,
-                path_originale=parsed["path"],
-                path_corrente=parsed["path"],
-                nome_file=parsed["nome_file"],
-                matricola=parsed.get("matricola"),
-                seriale=parsed.get("seriale"),
-                inventario=parsed.get("inventario"),
-                produttore=parsed.get("produttore"),
-                modello=parsed.get("modello"),
-                descrizione=parsed.get("descrizione"),
-                reparto=parsed.get("reparto"),
-                parsed_data=parsed,
-                source_type=(parsed.get("normalized") or {}).get("source_type", "mtr"),
-                template_ansur=parsed.get("template_ansur"),
-                is_permanent_three_measure_template=bool(parsed.get("is_permanent_three_measure_template")),
-                parsed_json=parsed.get("normalized") or {},
-                measurement_index_json=parsed.get("measurement_index") or {},
-            )
-        )
-    job.mtr_folder = payload.folder_path
-    job.stato = "mtr_importati"
-    job.summary = {**job.summary, "mtr_files": len(parsed_files)}
+    _replace_mtr_files(db, job, parsed_files, payload.folder_path)
     log_event(db, "mtr_imported", f"Importati {len(parsed_files)} file MTR", lavoro_id=job_id)
+    db.commit()
+    db.refresh(job)
+    return job
+
+
+@router.post("/jobs/{job_id}/mtr-upload", response_model=JobRead)
+def upload_mtr_files(job_id: int, files: list[UploadFile] = File(...), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
+    if not files:
+        raise HTTPException(status_code=400, detail="Nessun file MTR selezionato")
+
+    settings = get_settings()
+    target_dir = Path(settings.input_dir) / f"job_{job_id}" / "mtr_upload"
+    if target_dir.exists():
+        shutil.rmtree(target_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    saved_paths: list[Path] = []
+    for upload in files:
+        filename = Path(upload.filename or "").name
+        if not filename:
+            continue
+        suffix = Path(filename).suffix.lower()
+        if suffix == ".zip":
+            zip_path = target_dir / filename
+            with zip_path.open("wb") as handle:
+                shutil.copyfileobj(upload.file, handle)
+            saved_paths.extend(_extract_mtr_zip(zip_path, target_dir / "zip"))
+        elif suffix in {".mtr", ".csv"}:
+            target = _unique_path(target_dir, filename)
+            with target.open("wb") as handle:
+                shutil.copyfileobj(upload.file, handle)
+            saved_paths.append(target)
+        else:
+            raise HTTPException(status_code=400, detail=f"Formato file non supportato: {filename}")
+
+    if not saved_paths:
+        raise HTTPException(status_code=400, detail="Nessun file MTR o CSV valido trovato")
+
+    parsed_files = [parse_mtr_file(path) for path in sorted(saved_paths, key=lambda item: item.name.lower())]
+    _replace_mtr_files(db, job, parsed_files, str(target_dir))
+    log_event(db, "mtr_uploaded", f"Caricati {len(parsed_files)} file MTR/CSV", lavoro_id=job_id, dettagli={"files": [path.name for path in saved_paths]})
     db.commit()
     db.refresh(job)
     return job
@@ -565,6 +584,39 @@ def list_generated_pdfs(job_id: int, current_user: Utente = Depends(get_current_
     ]
 
 
+@router.get("/jobs/{job_id}/pdf/{pdf_id}/download")
+def download_generated_pdf(job_id: int, pdf_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _job_or_404(db, job_id, current_user)
+    row = db.query(PdfGenerato).filter(PdfGenerato.id == pdf_id, PdfGenerato.lavoro_id == job_id).one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="PDF non trovato")
+    path = Path(row.percorso_pdf)
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="File PDF non presente sul server")
+    return FileResponse(path, media_type="application/pdf", filename=row.nome_pdf or path.name)
+
+
+@router.get("/jobs/{job_id}/pdf/download-all")
+def download_all_generated_pdfs(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _job_or_404(db, job_id, current_user)
+    rows = db.query(PdfGenerato).filter(PdfGenerato.lavoro_id == job_id, PdfGenerato.esito == "generato").order_by(PdfGenerato.created_at.desc()).all()
+    existing = [row for row in rows if row.percorso_pdf and Path(row.percorso_pdf).exists()]
+    if not existing:
+        raise HTTPException(status_code=404, detail="Nessun PDF disponibile per il download")
+
+    settings = get_settings()
+    export_dir = Path(settings.output_dir) / f"job_{job_id}"
+    export_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = export_dir / f"pdf_lavoro_{job_id}.zip"
+    used_names: set[str] = set()
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for row in existing:
+            source = Path(row.percorso_pdf)
+            arcname = _unique_archive_name(row.nome_pdf or source.name, used_names)
+            archive.write(source, arcname=arcname)
+    return FileResponse(zip_path, media_type="application/zip", filename=zip_path.name)
+
+
 @router.post("/jobs/{job_id}/registry/sync")
 def sync_registry_from_job(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id, current_user)
@@ -651,6 +703,86 @@ def export_registry_calendar(cliente: str | None = None, current_user: Utente = 
         query = query.filter(RegistroApparecchiatura.cliente_nome.ilike(f"%{cliente}%"))
     content = build_registry_ics(query.order_by(RegistroApparecchiatura.data_prossima_verifica).all())
     return Response(content=content, media_type="text/calendar", headers={"Content-Disposition": 'attachment; filename="scadenze-vse.ics"'})
+
+
+def _replace_mtr_files(db: Session, job: LavoroVse, parsed_files: list[dict], folder_path: str) -> None:
+    db.query(FileMtr).filter(FileMtr.lavoro_id == job.id).delete()
+    for parsed in parsed_files:
+        db.add(
+            FileMtr(
+                lavoro_id=job.id,
+                path_originale=parsed["path"],
+                path_corrente=parsed["path"],
+                nome_file=parsed["nome_file"],
+                matricola=parsed.get("matricola"),
+                seriale=parsed.get("seriale"),
+                inventario=parsed.get("inventario"),
+                produttore=parsed.get("produttore"),
+                modello=parsed.get("modello"),
+                descrizione=parsed.get("descrizione"),
+                reparto=parsed.get("reparto"),
+                parsed_data=parsed,
+                source_type=(parsed.get("normalized") or {}).get("source_type", "mtr"),
+                template_ansur=parsed.get("template_ansur"),
+                is_permanent_three_measure_template=bool(parsed.get("is_permanent_three_measure_template")),
+                parsed_json=parsed.get("normalized") or {},
+                measurement_index_json=parsed.get("measurement_index") or {},
+            )
+        )
+    job.mtr_folder = folder_path
+    job.stato = "mtr_importati"
+    job.summary = {**(job.summary or {}), "mtr_files": len(parsed_files)}
+
+
+def _extract_mtr_zip(zip_path: Path, output_dir: Path) -> list[Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    extracted: list[Path] = []
+    try:
+        with zipfile.ZipFile(zip_path) as archive:
+            for info in archive.infolist():
+                if info.is_dir():
+                    continue
+                filename = Path(info.filename).name
+                if not filename or Path(filename).suffix.lower() not in {".mtr", ".csv"}:
+                    continue
+                target = _unique_path(output_dir, filename)
+                with archive.open(info) as source, target.open("wb") as destination:
+                    shutil.copyfileobj(source, destination)
+                extracted.append(target)
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail=f"Archivio ZIP non valido: {zip_path.name}")
+    return extracted
+
+
+def _unique_path(folder: Path, filename: str) -> Path:
+    safe_name = Path(filename).name
+    target = folder / safe_name
+    if not target.exists():
+        return target
+    stem = target.stem
+    suffix = target.suffix
+    counter = 2
+    while True:
+        candidate = folder / f"{stem}_{counter}{suffix}"
+        if not candidate.exists():
+            return candidate
+        counter += 1
+
+
+def _unique_archive_name(filename: str, used_names: set[str]) -> str:
+    safe_name = Path(filename).name or "documento.pdf"
+    if safe_name not in used_names:
+        used_names.add(safe_name)
+        return safe_name
+    stem = Path(safe_name).stem
+    suffix = Path(safe_name).suffix or ".pdf"
+    counter = 2
+    while True:
+        candidate = f"{stem}_{counter}{suffix}"
+        if candidate not in used_names:
+            used_names.add(candidate)
+            return candidate
+        counter += 1
 
 
 def database_status(db: Session) -> bool:

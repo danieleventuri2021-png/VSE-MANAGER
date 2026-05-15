@@ -1,12 +1,13 @@
-import { FileSpreadsheet, FolderOpen, Play, Wand2 } from "lucide-react";
+import { Archive, FileSpreadsheet, FolderOpen, Play, Upload, Wand2 } from "lucide-react";
 import { useState } from "react";
-import { analyzeJob, applyJob, importMtrFolder, uploadExcel, type Job } from "../api/client";
+import { analyzeJob, applyJob, importMtrFolder, uploadExcel, uploadMtrFiles, type Job } from "../api/client";
 import { FolderPicker } from "../components/FolderPicker";
 import { Panel } from "../components/Panel";
 
 export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }) {
   const [jobId, setJobId] = useState<number>(jobs[0]?.id ?? 0);
   const [file, setFile] = useState<File | null>(null);
+  const [mtrFiles, setMtrFiles] = useState<File[]>([]);
   const [folder, setFolder] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -42,6 +43,21 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
       onDone();
     } catch (err: any) {
       setError(describeError(err, "Scansione cartella MTR non riuscita."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runMtrUpload() {
+    if (!jobId || mtrFiles.length === 0 || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await uploadMtrFiles(jobId, mtrFiles);
+      setMessage(`Caricati ${mtrFiles.length} file MTR/CSV/ZIP`);
+      onDone();
+    } catch (err: any) {
+      setError(describeError(err, "Upload MTR non riuscito."));
     } finally {
       setBusy(false);
     }
@@ -93,6 +109,20 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
       </Panel>
       <Panel title="Scansione MTR">
         <div className="grid gap-3">
+          <input
+            className="text-sm"
+            type="file"
+            multiple
+            accept=".mtr,.MTR,.csv,.CSV,.zip,application/zip"
+            onChange={(event) => setMtrFiles(Array.from(event.target.files ?? []))}
+            disabled={busy}
+          />
+          <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtrUpload} disabled={busy || !jobId || mtrFiles.length === 0}>
+            <Upload size={18} /> Carica MTR/ZIP
+          </button>
+          <div className="flex items-center gap-2 pt-2 text-xs font-medium uppercase text-slate-500">
+            <Archive size={14} /> Cartella sul server
+          </div>
           <div className="flex flex-wrap gap-2">
             <label className="flex min-w-72 flex-1 items-center gap-2 rounded-md border border-line bg-white px-3">
               <FolderOpen size={16} className="shrink-0 text-slate-500" />
@@ -100,7 +130,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
             </label>
             <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60" onClick={() => setMtrPickerOpen(true)} disabled={busy}><FolderOpen size={16} /> Scegli cartella</button>
           </div>
-          <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtr} disabled={busy || !jobId || !folder}><FolderOpen size={18} /> Scansiona cartella</button>
+          <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtr} disabled={busy || !jobId || !folder}><FolderOpen size={18} /> Scansiona cartella server</button>
         </div>
       </Panel>
       <Panel title="Analisi e applicazione">
