@@ -233,7 +233,7 @@ def analyze_job(job_id: int, db: Session = Depends(get_db)):
 def get_matches(job_id: int, db: Session = Depends(get_db)):
     _job_or_404(db, job_id)
     rows = db.query(Apparecchiatura).filter(Apparecchiatura.lavoro_id == job_id).order_by(Apparecchiatura.row_index).all()
-    return [
+    matches = [
         {
             "equipment": _equipment_dict(row),
             "status": row.match_status,
@@ -242,6 +242,22 @@ def get_matches(job_id: int, db: Session = Depends(get_db)):
         }
         for row in rows
     ]
+    orphan_mtrs = (
+        db.query(FileMtr)
+        .filter(FileMtr.lavoro_id == job_id, ~FileMtr.matched_apparecchiature.any())
+        .order_by(FileMtr.id)
+        .all()
+    )
+    matches.extend(
+        {
+            "equipment": None,
+            "status": file_mtr.stato or "mtr_orfano",
+            "score": None,
+            "mtr": _mtr_dict(file_mtr),
+        }
+        for file_mtr in orphan_mtrs
+    )
+    return matches
 
 
 @router.get("/jobs/{job_id}/anomalies")

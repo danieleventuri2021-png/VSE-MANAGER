@@ -1,6 +1,7 @@
 import { FileSpreadsheet, FolderOpen, Play, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { analyzeJob, applyJob, importMtrFolder, uploadExcel, type Job } from "../api/client";
+import { FolderPicker } from "../components/FolderPicker";
 import { Panel } from "../components/Panel";
 
 export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }) {
@@ -10,6 +11,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mtrPickerOpen, setMtrPickerOpen] = useState(false);
 
   function describeError(err: any, fallback: string) {
     return err?.response?.data?.detail || err?.message || fallback;
@@ -91,7 +93,13 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
       </Panel>
       <Panel title="Scansione MTR">
         <div className="grid gap-3">
-          <input className="h-10 rounded-md border border-line px-3 text-sm" placeholder="C:\\percorso\\cartella\\mtr" value={folder} onChange={(event) => setFolder(event.target.value)} disabled={busy} />
+          <div className="flex flex-wrap gap-2">
+            <label className="flex min-w-72 flex-1 items-center gap-2 rounded-md border border-line bg-white px-3">
+              <FolderOpen size={16} className="shrink-0 text-slate-500" />
+              <input className="h-10 w-full border-0 bg-transparent text-sm outline-none" placeholder="C:\\percorso\\cartella\\mtr" value={folder} onChange={(event) => setFolder(event.target.value)} disabled={busy} />
+            </label>
+            <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60" onClick={() => setMtrPickerOpen(true)} disabled={busy}><FolderOpen size={16} /> Scegli cartella</button>
+          </div>
           <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtr} disabled={busy || !jobId || !folder}><FolderOpen size={18} /> Scansiona cartella</button>
         </div>
       </Panel>
@@ -103,6 +111,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
         {message && <p className="mt-3 text-sm text-action">{message}</p>}
         {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       </Panel>
+      {mtrPickerOpen && <FolderPicker initialPath={folder} title="Seleziona cartella MTR" onSelect={(path) => { setFolder(path); setMtrPickerOpen(false); }} onClose={() => setMtrPickerOpen(false)} />}
     </div>
   );
 }

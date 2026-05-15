@@ -1,6 +1,7 @@
-import { AlertCircle, CheckCircle2, ChevronLeft, FileText, Folder, FolderOpen, LoaderCircle, Pencil, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { browseFolders, createFolder, deleteFolder, generateAllPdfs, getReview, listPdfs, renameFolder, type Job } from "../api/client";
+import { AlertCircle, CheckCircle2, FileText, Folder, FolderOpen, LoaderCircle } from "lucide-react";
+import { useState } from "react";
+import { generateAllPdfs, getReview, listPdfs, type Job } from "../api/client";
+import { FolderPicker } from "../components/FolderPicker";
 import { Panel } from "../components/Panel";
 import { RefreshButton } from "../components/RefreshButton";
 
@@ -64,7 +65,7 @@ export function PdfPage({ jobs }: { jobs: Job[] }) {
               disabled={isRunning}
             />
           </label>
-          <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={() => setPickerOpen(true)} disabled={isRunning}><Folder size={16} /> Sfoglia</button>
+          <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={() => setPickerOpen(true)} disabled={isRunning}><Folder size={16} /> Scegli cartella</button>
           <button
             className="inline-flex h-10 items-center gap-2 rounded-md bg-action px-3 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
             onClick={generateAll}
@@ -91,113 +92,7 @@ export function PdfPage({ jobs }: { jobs: Job[] }) {
         <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr><th className="py-2">Nome</th><th>Esito</th><th>Percorso</th></tr></thead><tbody>{pdfs.map((pdf) => <tr className="border-t border-line" key={pdf.id}><td className="py-2">{pdf.nome_pdf}</td><td>{pdf.esito}</td><td className="break-all">{pdf.percorso_pdf}</td></tr>)}</tbody></table></div>
         <p className="mt-3 text-xs text-slate-500">File MTR nel lavoro: {files.length}</p>
       </Panel>
-      {pickerOpen && <FolderPicker initialPath={outputDir} onSelect={(path) => { setOutputDir(path); setPickerOpen(false); }} onClose={() => setPickerOpen(false)} />}
+      {pickerOpen && <FolderPicker initialPath={outputDir} title="Seleziona cartella export PDF" onSelect={(path) => { setOutputDir(path); setPickerOpen(false); }} onClose={() => setPickerOpen(false)} />}
     </div>
   );
-}
-
-function FolderPicker({ initialPath, onSelect, onClose }: { initialPath: string; onSelect: (path: string) => void; onClose: () => void }) {
-  const [path, setPath] = useState(initialPath);
-  const [parent, setParent] = useState<string | null>(null);
-  const [folders, setFolders] = useState<any[]>([]);
-  const [error, setError] = useState("");
-  const [selectedFolder, setSelectedFolder] = useState<any>(null);
-  const [newName, setNewName] = useState("");
-  const [renaming, setRenaming] = useState(false);
-
-  async function load(nextPath?: string) {
-    setError("");
-    try {
-      const data = await browseFolders(nextPath || undefined);
-      setPath(data.path || "");
-      setParent(data.parent);
-      setFolders(data.folders || []);
-      setSelectedFolder(null);
-      setRenaming(false);
-      setNewName("");
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || "Impossibile leggere la cartella.");
-    }
-  }
-
-  async function makeFolder() {
-    if (!path || !newName.trim()) return;
-    setError("");
-    try {
-      const created = await createFolder(path, newName.trim());
-      await load(path);
-      setPath(created.path);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || "Creazione cartella non riuscita.");
-    }
-  }
-
-  async function applyRename() {
-    if (!selectedFolder || !newName.trim()) return;
-    setError("");
-    try {
-      const renamed = await renameFolder(selectedFolder.path, newName.trim());
-      await load(renamed.path);
-      setPath(renamed.path);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || "Rinomina cartella non riuscita.");
-    }
-  }
-
-  async function removeSelected() {
-    if (!selectedFolder) return;
-    setError("");
-    try {
-      await deleteFolder(selectedFolder.path);
-      await load(parentPath(selectedFolder.path));
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || "Eliminazione cartella non riuscita.");
-    }
-  }
-
-  useEffect(() => { load(initialPath || undefined); }, []);
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-md bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-line px-4 py-3">
-          <h3 className="text-sm font-semibold">Seleziona cartella export PDF</h3>
-          <button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" onClick={onClose}><X size={16} /></button>
-        </div>
-        <div className="border-b border-line p-3">
-          <div className="flex gap-2">
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm disabled:opacity-50" disabled={parent === null} onClick={() => load(parent || undefined)}><ChevronLeft size={16} /> Su</button>
-            <input className="h-9 flex-1 rounded-md border border-line px-3 text-sm" value={path} onChange={(event) => setPath(event.target.value)} placeholder="Percorso cartella" />
-            <button className="h-9 rounded-md border border-line px-3 text-sm" onClick={() => load(path)}>Apri</button>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <input className="h-9 min-w-56 rounded-md border border-line px-3 text-sm" value={newName} onChange={(event) => setNewName(event.target.value)} placeholder={renaming ? "Nuovo nome cartella" : "Nome nuova cartella"} />
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={renaming ? applyRename : makeFolder} disabled={!path || !newName.trim()}>{renaming ? <Pencil size={16} /> : <Plus size={16} />}{renaming ? "Conferma rinomina" : "Nuova cartella"}</button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm disabled:opacity-50" disabled={!selectedFolder} onClick={() => { setRenaming(true); setNewName(selectedFolder?.name || ""); }}><Pencil size={16} /> Rinomina</button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-red-200 px-3 text-sm text-red-700 disabled:opacity-50" disabled={!selectedFolder} onClick={removeSelected}><Trash2 size={16} /> Elimina</button>
-          </div>
-          {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
-        </div>
-        <div className="min-h-64 flex-1 overflow-auto p-2">
-          {folders.map((folder) => (
-            <button key={folder.path} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 ${selectedFolder?.path === folder.path ? "bg-blue-50 ring-1 ring-action" : ""}`} onDoubleClick={() => load(folder.path)} onClick={() => { setSelectedFolder(folder); setPath(folder.path); }}>
-              <Folder size={16} className="text-slate-500" />
-              <span className="truncate">{folder.name}</span>
-            </button>
-          ))}
-          {!folders.length && <p className="p-3 text-sm text-slate-500">Nessuna sottocartella disponibile.</p>}
-        </div>
-        <div className="flex justify-end gap-2 border-t border-line p-3">
-          <button className="h-9 rounded-md border border-line px-3 text-sm" onClick={onClose}>Annulla</button>
-          <button className="h-9 rounded-md bg-action px-3 text-sm text-white" onClick={() => onSelect(path)}>Usa questa cartella</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function parentPath(path: string) {
-  const normalized = path.replace(/[\\/]$/, "");
-  const index = Math.max(normalized.lastIndexOf("\\"), normalized.lastIndexOf("/"));
-  return index > 0 ? normalized.slice(0, index) : undefined;
 }

@@ -8,7 +8,7 @@ ALIASES = {
     "inventario": ["inventario", "numero inventario", "cespite", "asset", "inv"],
     "produttore": ["produttore", "costruttore", "marca", "manufacturer"],
     "modello": ["modello", "model", "tipo", "type"],
-    "descrizione": ["descrizione", "apparecchio", "dispositivo", "equipment", "nome apparecchio"],
+    "descrizione": ["descrizione", "tipologia", "apparecchio", "dispositivo", "equipment", "nome apparecchio"],
     "reparto": ["reparto", "ubicazione", "servizio", "area", "location"],
     "esito": ["esito", "risultato", "conforme", "pass fail", "stato verifica"],
     "data_verifica": ["data verifica", "data", "verification date", "test date"],
