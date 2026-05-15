@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
-import { clearStoredToken, getHealth, getJobs, getMe, getPorts, getStoredToken, type CurrentUser, type Job } from "./api/client";
+import { clearStoredToken, getDashboardStatus, getHealth, getJobs, getMe, getPorts, getStoredToken, type CurrentUser, type Job } from "./api/client";
 import { Layout, type View } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
@@ -29,8 +29,8 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     setError("");
-    const [healthResult, portsResult, jobsResult] = await Promise.allSettled([getHealth(), getPorts(), getJobs()]);
-    if (healthResult.status === "fulfilled") setHealth(healthResult.value);
+    const [healthResult, dashboardResult, portsResult, jobsResult] = await Promise.allSettled([getHealth(), getDashboardStatus(), getPorts(), getJobs()]);
+    if (healthResult.status === "fulfilled") setHealth({ ...healthResult.value, ...(dashboardResult.status === "fulfilled" ? dashboardResult.value : {}) });
     if (portsResult.status === "fulfilled") setPorts(portsResult.value);
     if (jobsResult.status === "fulfilled") setJobs(jobsResult.value);
     if (healthResult.status === "rejected") setError("Backend non raggiungibile");

@@ -47,6 +47,8 @@ class Utente(Base, TimestampMixin):
     nome: Mapped[str | None] = mapped_column(String(255))
     ruolo: Mapped[str] = mapped_column(String(50), default="admin", nullable=False)
     attivo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    lavori: Mapped[list["LavoroVse"]] = relationship(back_populates="owner")
+    registro_apparecchiature: Mapped[list["RegistroApparecchiatura"]] = relationship(back_populates="owner")
 
 
 class LavoroVse(Base, TimestampMixin):
@@ -57,6 +59,7 @@ class LavoroVse(Base, TimestampMixin):
     titolo: Mapped[str] = mapped_column(String(255), nullable=False)
     cliente_nome: Mapped[str | None] = mapped_column(String(255))
     presidio_id: Mapped[int | None] = mapped_column(ForeignKey(f"{SCHEMA}.presidi.id", ondelete="SET NULL"))
+    owner_user_id: Mapped[int | None] = mapped_column(ForeignKey(f"{SCHEMA}.utenti.id", ondelete="SET NULL"), index=True)
     stato: Mapped[str] = mapped_column(String(50), default="non_elaborato", nullable=False)
     excel_path: Mapped[str | None] = mapped_column(String(1000))
     mtr_folder: Mapped[str | None] = mapped_column(String(1000))
@@ -70,6 +73,7 @@ class LavoroVse(Base, TimestampMixin):
     protezione_default: Mapped[str | None] = mapped_column(String(255), default="Trasformatore di isolamento")
     template_pdf: Mapped[str | None] = mapped_column(String(100), default="standard")
     intestazione_pdf: Mapped[str | None] = mapped_column(String(100), default="standard")
+    owner: Mapped[Utente | None] = relationship(back_populates="lavori")
     presidio: Mapped[Presidio | None] = relationship(back_populates="lavori")
     apparecchiature: Mapped[list["Apparecchiatura"]] = relationship(back_populates="lavoro", cascade="all, delete-orphan")
     file_mtr: Mapped[list["FileMtr"]] = relationship(back_populates="lavoro", cascade="all, delete-orphan")
@@ -242,6 +246,7 @@ class RegistroApparecchiatura(Base, TimestampMixin):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_user_id: Mapped[int | None] = mapped_column(ForeignKey(f"{SCHEMA}.utenti.id", ondelete="SET NULL"), index=True)
     cliente_nome: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     presidio: Mapped[str | None] = mapped_column(String(255))
     reparto: Mapped[str | None] = mapped_column(String(255))
@@ -266,4 +271,5 @@ class RegistroApparecchiatura(Base, TimestampMixin):
     ultima_verifica_id: Mapped[int | None] = mapped_column(ForeignKey(f"{SCHEMA}.verifiche_vse.id", ondelete="SET NULL"))
     calendar_event_id: Mapped[str | None] = mapped_column(String(255))
     raw_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    owner: Mapped[Utente | None] = relationship(back_populates="registro_apparecchiature")
     ultimo_lavoro: Mapped[LavoroVse | None] = relationship(back_populates="registro_apparecchiature")

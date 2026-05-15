@@ -106,6 +106,11 @@ def system_ports():
     return check_ports(settings.backend_port, int(settings.frontend_origin.rsplit(":", 1)[-1]))
 
 
+@router.get("/dashboard/status")
+def dashboard_status(current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    return dashboard_counts(db, current_user)
+
+
 @router.get("/system/folders")
 def browse_folders(path: str | None = None):
     if not path:
@@ -168,8 +173,8 @@ def delete_folder(path: str):
 
 
 @router.post("/jobs", response_model=JobRead)
-def create_job(payload: JobCreate, db: Session = Depends(get_db)):
-    job = LavoroVse(titolo=payload.titolo, cliente_nome=payload.cliente_nome, mtr_folder=payload.mtr_folder)
+def create_job(payload: JobCreate, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = LavoroVse(titolo=payload.titolo, cliente_nome=payload.cliente_nome, mtr_folder=payload.mtr_folder, owner_user_id=current_user.id)
     db.add(job)
     db.flush()
     log_event(db, "job_created", f"Lavoro creato: {payload.titolo}", lavoro_id=job.id)
@@ -179,18 +184,18 @@ def create_job(payload: JobCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/jobs", response_model=list[JobRead])
-def list_jobs(db: Session = Depends(get_db)):
-    return db.query(LavoroVse).order_by(LavoroVse.created_at.desc()).all()
+def list_jobs(current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    return _jobs_query(db, current_user).order_by(LavoroVse.created_at.desc()).all()
 
 
 @router.get("/jobs/{job_id}", response_model=JobRead)
-def get_job(job_id: int, db: Session = Depends(get_db)):
-    return _job_or_404(db, job_id)
+def get_job(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    return _job_or_404(db, job_id, current_user)
 
 
 @router.post("/jobs/{job_id}/excel", response_model=JobRead)
-def upload_excel(job_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def upload_excel(job_id: int, file: UploadFile = File(...), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     settings = get_settings()
     target_dir = Path(settings.input_dir) / f"job_{job_id}"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -215,8 +220,8 @@ def upload_excel(job_id: int, file: UploadFile = File(...), db: Session = Depend
 
 
 @router.post("/jobs/{job_id}/asset", response_model=JobRead)
-def upload_job_asset(job_id: int, field: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def upload_job_asset(job_id: int, field: str, file: UploadFile = File(...), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     target_field = {
         "firma_path": "firma_default_path",
         "template_pdf": "template_pdf",
@@ -241,8 +246,8 @@ def upload_job_asset(job_id: int, field: str, file: UploadFile = File(...), db: 
 
 
 @router.post("/jobs/{job_id}/mtr-folder", response_model=JobRead)
-def import_mtr_folder(job_id: int, payload: FolderRequest, db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def import_mtr_folder(job_id: int, payload: FolderRequest, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     parsed_files = scan_mtr_folder(payload.folder_path)
     db.query(FileMtr).filter(FileMtr.lavoro_id == job_id).delete()
     for parsed in parsed_files:
@@ -277,8 +282,8 @@ def import_mtr_folder(job_id: int, payload: FolderRequest, db: Session = Depends
 
 
 @router.post("/jobs/{job_id}/analyze", response_model=JobRead)
-def analyze_job(job_id: int, db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def analyze_job(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     equipment_rows = db.query(Apparecchiatura).filter(Apparecchiatura.lavoro_id == job_id).order_by(Apparecchiatura.row_index).all()
     mtr_rows = db.query(FileMtr).filter(FileMtr.lavoro_id == job_id).order_by(FileMtr.id).all()
     matches, orphans = match_records([_equipment_dict(row) for row in equipment_rows], [_mtr_dict(row) for row in mtr_rows])
@@ -323,8 +328,8 @@ def analyze_job(job_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/jobs/{job_id}/matches")
-def get_matches(job_id: int, db: Session = Depends(get_db)):
-    _job_or_404(db, job_id)
+def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _job_or_404(db, job_id, current_user)
     rows = db.query(Apparecchiatura).filter(Apparecchiatura.lavoro_id == job_id).order_by(Apparecchiatura.row_index).all()
     matches = [
         {
@@ -354,18 +359,20 @@ def get_matches(job_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/jobs/{job_id}/anomalies")
-def get_anomalies(job_id: int, db: Session = Depends(get_db)):
-    _job_or_404(db, job_id)
+def get_anomalies(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _job_or_404(db, job_id, current_user)
     return db.query(Anomalia).filter(Anomalia.lavoro_id == job_id).order_by(Anomalia.created_at.desc()).all()
 
 
 @router.get("/anomalies")
-def list_all_anomalies(stato: str | None = "aperta", db: Session = Depends(get_db)):
+def list_all_anomalies(stato: str | None = "aperta", current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     query = (
         db.query(Anomalia)
         .options(joinedload(Anomalia.lavoro))
         .join(LavoroVse, Anomalia.lavoro_id == LavoroVse.id)
     )
+    if not _is_admin(current_user):
+        query = query.filter(LavoroVse.owner_user_id == current_user.id)
     if stato:
         query = query.filter(Anomalia.stato == stato)
     rows = query.order_by(LavoroVse.titolo, Anomalia.created_at.desc()).all()
@@ -373,9 +380,9 @@ def list_all_anomalies(stato: str | None = "aperta", db: Session = Depends(get_d
 
 
 @router.delete("/anomalies/{anomaly_id}")
-def delete_anomaly(anomaly_id: int, db: Session = Depends(get_db)):
+def delete_anomaly(anomaly_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     row = db.get(Anomalia, anomaly_id)
-    if not row:
+    if not row or not _can_access_job(row.lavoro, current_user):
         raise HTTPException(status_code=404, detail="Anomalia non trovata")
     db.delete(row)
     db.commit()
@@ -383,8 +390,10 @@ def delete_anomaly(anomaly_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/anomalies")
-def delete_all_anomalies(stato: str | None = "aperta", db: Session = Depends(get_db)):
+def delete_all_anomalies(stato: str | None = "aperta", current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     query = db.query(Anomalia)
+    if not _is_admin(current_user):
+        query = query.join(LavoroVse, Anomalia.lavoro_id == LavoroVse.id).filter(LavoroVse.owner_user_id == current_user.id)
     if stato:
         query = query.filter(Anomalia.stato == stato)
     deleted = query.delete(synchronize_session=False)
@@ -393,8 +402,8 @@ def delete_all_anomalies(stato: str | None = "aperta", db: Session = Depends(get
 
 
 @router.post("/jobs/{job_id}/apply", response_model=ApplyResult)
-def apply_job(job_id: int, db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def apply_job(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     settings = get_settings()
     matched = db.query(Apparecchiatura).filter(Apparecchiatura.lavoro_id == job_id, Apparecchiatura.matched_file_mtr_id.isnot(None)).all()
     paths = [row.matched_file_mtr.path_corrente for row in matched if row.matched_file_mtr]
@@ -422,14 +431,14 @@ def apply_job(job_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/jobs/{job_id}/logs")
-def get_logs(job_id: int, db: Session = Depends(get_db)):
-    _job_or_404(db, job_id)
+def get_logs(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _job_or_404(db, job_id, current_user)
     return db.query(LogOperativo).filter(LogOperativo.lavoro_id == job_id).order_by(LogOperativo.created_at.desc()).all()
 
 
 @router.put("/jobs/{job_id}/settings", response_model=JobRead)
-def update_job_settings(job_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def update_job_settings(job_id: int, payload: dict = Body(...), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     update_job_defaults(job, payload)
     log_event(db, "job_defaults_updated", "Default lavoro aggiornati", lavoro_id=job_id, dettagli=payload)
     db.commit()
@@ -438,16 +447,16 @@ def update_job_settings(job_id: int, payload: dict = Body(...), db: Session = De
 
 
 @router.get("/jobs/{job_id}/review")
-def get_review_list(job_id: int, db: Session = Depends(get_db)):
-    _job_or_404(db, job_id)
+def get_review_list(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _job_or_404(db, job_id, current_user)
     files = db.query(FileMtr).filter(FileMtr.lavoro_id == job_id).order_by(FileMtr.id).all()
     return [_review_summary(db, file_mtr) for file_mtr in files]
 
 
 @router.get("/jobs/{job_id}/review/{file_mtr_id}")
-def get_review_detail(job_id: int, file_mtr_id: int, db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
-    file_mtr = _file_or_404(db, file_mtr_id, job_id)
+def get_review_detail(job_id: int, file_mtr_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
+    file_mtr = _file_or_404(db, file_mtr_id, job_id, current_user)
     verification = _ensure_verification(db, file_mtr)
     final = build_final_pdf_data(job, file_mtr, verification)
     verification.dati_finali_pdf_json = final
@@ -464,9 +473,9 @@ def get_review_detail(job_id: int, file_mtr_id: int, db: Session = Depends(get_d
 
 
 @router.put("/jobs/{job_id}/review/{file_mtr_id}")
-def save_review_detail(job_id: int, file_mtr_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
-    file_mtr = _file_or_404(db, file_mtr_id, job_id)
+def save_review_detail(job_id: int, file_mtr_id: int, payload: dict = Body(...), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
+    file_mtr = _file_or_404(db, file_mtr_id, job_id, current_user)
     verification = _ensure_verification(db, file_mtr)
     revised = payload.get("dati_revisionati") or payload.get("fields") or {}
     locked = payload.get("campi_bloccati") or {}
@@ -483,8 +492,8 @@ def save_review_detail(job_id: int, file_mtr_id: int, payload: dict = Body(...),
 
 
 @router.post("/jobs/{job_id}/apply-defaults")
-def apply_job_defaults(job_id: int, payload: dict = Body(default={}), db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def apply_job_defaults(job_id: int, payload: dict = Body(default={}), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     if payload.get("save_as_job_default"):
         update_job_defaults(job, payload.get("values") or {})
     changed = []
@@ -505,9 +514,9 @@ def apply_job_defaults(job_id: int, payload: dict = Body(default={}), db: Sessio
 
 
 @router.post("/files/{file_mtr_id}/save-source")
-def save_source(file_mtr_id: int, payload: dict = Body(default={}), db: Session = Depends(get_db)):
+def save_source(file_mtr_id: int, payload: dict = Body(default={}), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     file_mtr = db.get(FileMtr, file_mtr_id)
-    if not file_mtr:
+    if not file_mtr or not _can_access_job(file_mtr.lavoro, current_user):
         raise HTTPException(status_code=404, detail="File MTR non trovato")
     settings = get_settings()
     verification = _ensure_verification(db, file_mtr)
@@ -524,9 +533,9 @@ def save_source(file_mtr_id: int, payload: dict = Body(default={}), db: Session 
 
 
 @router.post("/jobs/{job_id}/pdf/generate-one/{file_mtr_id}")
-def generate_pdf_one(job_id: int, file_mtr_id: int, db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
-    file_mtr = _file_or_404(db, file_mtr_id, job_id)
+def generate_pdf_one(job_id: int, file_mtr_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
+    file_mtr = _file_or_404(db, file_mtr_id, job_id, current_user)
     settings = get_settings()
     result = generate_one_pdf(db, job, file_mtr, Path(settings.output_dir) / f"job_{job_id}")
     log_event(db, "pdf_generated", f"PDF generato: {result['filename']}", lavoro_id=job_id, dettagli=result)
@@ -535,8 +544,8 @@ def generate_pdf_one(job_id: int, file_mtr_id: int, db: Session = Depends(get_db
 
 
 @router.post("/jobs/{job_id}/pdf/generate-all")
-def generate_pdf_all(job_id: int, payload: PdfGenerateRequest = Body(default=PdfGenerateRequest()), db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def generate_pdf_all(job_id: int, payload: PdfGenerateRequest = Body(default=PdfGenerateRequest()), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     settings = get_settings()
     output_dir = Path(payload.output_dir.strip()) if payload.output_dir and payload.output_dir.strip() else Path(settings.output_dir) / f"job_{job_id}"
     report = generate_all_pdfs(db, job, output_dir)
@@ -547,8 +556,8 @@ def generate_pdf_all(job_id: int, payload: PdfGenerateRequest = Body(default=Pdf
 
 
 @router.get("/jobs/{job_id}/pdf")
-def list_generated_pdfs(job_id: int, db: Session = Depends(get_db)):
-    _job_or_404(db, job_id)
+def list_generated_pdfs(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    _job_or_404(db, job_id, current_user)
     rows = db.query(PdfGenerato).filter(PdfGenerato.lavoro_id == job_id).order_by(PdfGenerato.created_at.desc()).all()
     return [
         {"id": row.id, "file_mtr_id": row.file_mtr_id, "verifica_id": row.verifica_id, "percorso_pdf": row.percorso_pdf, "nome_pdf": row.nome_pdf, "template_pdf": row.template_pdf, "created_at": row.created_at, "esito": row.esito, "errore": row.errore}
@@ -557,8 +566,8 @@ def list_generated_pdfs(job_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/jobs/{job_id}/registry/sync")
-def sync_registry_from_job(job_id: int, db: Session = Depends(get_db)):
-    job = _job_or_404(db, job_id)
+def sync_registry_from_job(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
     report = sync_job_registry(db, job)
     log_event(db, "registry_synced", "Archivio apparecchiature aggiornato dal lavoro VSE", lavoro_id=job_id, dettagli=report)
     db.commit()
@@ -566,8 +575,8 @@ def sync_registry_from_job(job_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/registry/equipment")
-def list_registry_equipment(cliente: str | None = None, due_before: str | None = None, db: Session = Depends(get_db)):
-    query = db.query(RegistroApparecchiatura)
+def list_registry_equipment(cliente: str | None = None, due_before: str | None = None, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = _registry_query(db, current_user)
     if cliente:
         query = query.filter(RegistroApparecchiatura.cliente_nome.ilike(f"%{cliente}%"))
     if due_before:
@@ -577,31 +586,31 @@ def list_registry_equipment(cliente: str | None = None, due_before: str | None =
 
 
 @router.get("/registry/clients")
-def list_registry_clients(db: Session = Depends(get_db)):
-    rows = db.query(RegistroApparecchiatura.cliente_nome).distinct().order_by(RegistroApparecchiatura.cliente_nome).all()
+def list_registry_clients(current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = _registry_query(db, current_user).with_entities(RegistroApparecchiatura.cliente_nome).distinct().order_by(RegistroApparecchiatura.cliente_nome).all()
     return [row[0] for row in rows if row[0]]
 
 
 @router.get("/registry/equipment/{equipment_id}")
-def get_registry_equipment(equipment_id: int, db: Session = Depends(get_db)):
+def get_registry_equipment(equipment_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     row = db.get(RegistroApparecchiatura, equipment_id)
-    if not row:
+    if not row or not _can_access_registry(row, current_user):
         raise HTTPException(status_code=404, detail="Apparecchiatura non trovata")
     return _registry_dict(row)
 
 
 @router.get("/registry/equipment/{equipment_id}/measurements")
-def get_registry_equipment_measurements(equipment_id: int, db: Session = Depends(get_db)):
+def get_registry_equipment_measurements(equipment_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     row = db.get(RegistroApparecchiatura, equipment_id)
-    if not row:
+    if not row or not _can_access_registry(row, current_user):
         raise HTTPException(status_code=404, detail="Apparecchiatura non trovata")
     return {"equipment": _registry_dict(row), "measurements": _clean_measurements((row.raw_json or {}).get("measurements") or [])}
 
 
 @router.get("/registry/equipment/{equipment_id}/trend")
-def get_registry_equipment_trend(equipment_id: int, db: Session = Depends(get_db)):
+def get_registry_equipment_trend(equipment_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     row = db.get(RegistroApparecchiatura, equipment_id)
-    if not row:
+    if not row or not _can_access_registry(row, current_user):
         raise HTTPException(status_code=404, detail="Apparecchiatura non trovata")
     history = []
     verifications = (
@@ -609,7 +618,7 @@ def get_registry_equipment_trend(equipment_id: int, db: Session = Depends(get_db
         .options(joinedload(VerificaVse.file_mtr).joinedload(FileMtr.lavoro))
         .join(FileMtr, VerificaVse.file_mtr_id == FileMtr.id)
         .join(LavoroVse, FileMtr.lavoro_id == LavoroVse.id)
-        .filter(LavoroVse.cliente_nome == row.cliente_nome)
+        .filter(LavoroVse.cliente_nome == row.cliente_nome, LavoroVse.owner_user_id == row.owner_user_id)
         .order_by(VerificaVse.created_at)
         .all()
     )
@@ -636,8 +645,8 @@ def get_registry_equipment_trend(equipment_id: int, db: Session = Depends(get_db
 
 
 @router.get("/registry/calendar.ics")
-def export_registry_calendar(cliente: str | None = None, db: Session = Depends(get_db)):
-    query = db.query(RegistroApparecchiatura).filter(RegistroApparecchiatura.data_prossima_verifica.isnot(None), RegistroApparecchiatura.data_prossima_verifica != "")
+def export_registry_calendar(cliente: str | None = None, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = _registry_query(db, current_user).filter(RegistroApparecchiatura.data_prossima_verifica.isnot(None), RegistroApparecchiatura.data_prossima_verifica != "")
     if cliente:
         query = query.filter(RegistroApparecchiatura.cliente_nome.ilike(f"%{cliente}%"))
     content = build_registry_ics(query.order_by(RegistroApparecchiatura.data_prossima_verifica).all())
@@ -652,23 +661,42 @@ def database_status(db: Session) -> bool:
         return False
 
 
-def dashboard_counts(db: Session) -> dict:
+def dashboard_counts(db: Session, user: Utente | None = None) -> dict:
+    jobs_query = db.query(func.count(LavoroVse.id))
+    anomalies_query = db.query(func.count(Anomalia.id)).join(LavoroVse, Anomalia.lavoro_id == LavoroVse.id).filter(Anomalia.stato == "aperta")
+    if user is not None and not _is_admin(user):
+        jobs_query = jobs_query.filter(LavoroVse.owner_user_id == user.id)
+        anomalies_query = anomalies_query.filter(LavoroVse.owner_user_id == user.id)
     return {
-        "jobs": db.query(func.count(LavoroVse.id)).scalar() or 0,
-        "open_anomalies": db.query(func.count(Anomalia.id)).filter(Anomalia.stato == "aperta").scalar() or 0,
+        "jobs": jobs_query.scalar() or 0,
+        "open_anomalies": anomalies_query.scalar() or 0,
     }
 
 
-def _job_or_404(db: Session, job_id: int) -> LavoroVse:
-    job = db.get(LavoroVse, job_id)
+def _jobs_query(db: Session, user: Utente):
+    query = db.query(LavoroVse)
+    if not _is_admin(user):
+        query = query.filter(LavoroVse.owner_user_id == user.id)
+    return query
+
+
+def _registry_query(db: Session, user: Utente):
+    query = db.query(RegistroApparecchiatura)
+    if not _is_admin(user):
+        query = query.filter(RegistroApparecchiatura.owner_user_id == user.id)
+    return query
+
+
+def _job_or_404(db: Session, job_id: int, user: Utente) -> LavoroVse:
+    job = _jobs_query(db, user).filter(LavoroVse.id == job_id).one_or_none()
     if not job:
         raise HTTPException(status_code=404, detail="Lavoro VSE non trovato")
     return job
 
 
-def _file_or_404(db: Session, file_mtr_id: int, job_id: int | None = None) -> FileMtr:
+def _file_or_404(db: Session, file_mtr_id: int, job_id: int | None = None, user: Utente | None = None) -> FileMtr:
     file_mtr = db.get(FileMtr, file_mtr_id)
-    if not file_mtr or (job_id is not None and file_mtr.lavoro_id != job_id):
+    if not file_mtr or (job_id is not None and file_mtr.lavoro_id != job_id) or (user is not None and not _can_access_job(file_mtr.lavoro, user)):
         raise HTTPException(status_code=404, detail="File MTR non trovato")
     return file_mtr
 
@@ -842,3 +870,15 @@ def _user_dict(row: Utente) -> dict:
 def _require_admin(user: Utente) -> None:
     if user.ruolo != "admin":
         raise HTTPException(status_code=403, detail="Permesso riservato agli amministratori")
+
+
+def _is_admin(user: Utente) -> bool:
+    return user.ruolo == "admin"
+
+
+def _can_access_job(job: LavoroVse | None, user: Utente) -> bool:
+    return bool(job and (_is_admin(user) or job.owner_user_id == user.id))
+
+
+def _can_access_registry(row: RegistroApparecchiatura, user: Utente) -> bool:
+    return _is_admin(user) or row.owner_user_id == user.id

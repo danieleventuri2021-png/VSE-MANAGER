@@ -22,7 +22,11 @@ def sync_job_registry(db: Session, job: LavoroVse) -> dict[str, Any]:
             continue
         existing = (
             db.query(RegistroApparecchiatura)
-            .filter(RegistroApparecchiatura.cliente_nome == row_data["cliente_nome"], RegistroApparecchiatura.identificativo == row_data["identificativo"])
+            .filter(
+                RegistroApparecchiatura.owner_user_id == row_data.get("owner_user_id"),
+                RegistroApparecchiatura.cliente_nome == row_data["cliente_nome"],
+                RegistroApparecchiatura.identificativo == row_data["identificativo"],
+            )
             .one_or_none()
         )
         if existing:
@@ -42,6 +46,7 @@ def registry_data_from_pdf_data(job: LavoroVse, file_mtr: FileMtr, verification:
     identifier = first_value(data.get("serial"), data.get("matricola"), data.get("seriale"), data.get("invGest"), data.get("inventario"), file_mtr.matricola, file_mtr.seriale, file_mtr.inventario)
     return {
         "cliente_nome": job.cliente_nome or "Cliente non indicato",
+        "owner_user_id": getattr(job, "owner_user_id", None),
         "presidio": data.get("presidio") or data.get("location") or file_mtr.reparto,
         "reparto": data.get("reparto") or file_mtr.reparto,
         "stanza": data.get("stanza") or "",

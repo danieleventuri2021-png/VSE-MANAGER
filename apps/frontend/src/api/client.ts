@@ -91,6 +91,11 @@ export async function getPorts() {
   return data;
 }
 
+export async function getDashboardStatus() {
+  const { data } = await api.get("/api/dashboard/status");
+  return data;
+}
+
 export async function browseFolders(path?: string) {
   const { data } = await api.get("/api/system/folders", { params: path ? { path } : undefined });
   return data;

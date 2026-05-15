@@ -40,7 +40,6 @@ def startup() -> None:
 @app.get("/health")
 def health(db: Session = Depends(get_db)):
     db_ok = database_status(db)
-    counts = dashboard_counts(db) if db_ok else {"jobs": 0, "open_anomalies": 0}
     return {
         "status": "ok",
         "app": "gestione-vse",
@@ -48,5 +47,4 @@ def health(db: Session = Depends(get_db)):
         "database_error": None if db_ok else getattr(app.state, "database_error", None),
         "backend_port": settings.backend_port,
         "frontend_origin": settings.frontend_origin,
-        **counts,
     }
