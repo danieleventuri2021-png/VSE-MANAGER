@@ -23,6 +23,37 @@ EARTH_RES_POSITIONS = [
 ]
 
 
+def _first_existing_font(*paths):
+    for path in paths:
+        if path and os.path.exists(path):
+            return path
+    return None
+
+
+def pdf_font_paths():
+    win_fonts = os.environ.get("WINDIR", r"C:\Windows")
+    win_fonts = os.path.join(win_fonts, "Fonts")
+    regular = _first_existing_font(
+        os.path.join(win_fonts, "calibri.ttf"),
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+    )
+    bold = _first_existing_font(
+        os.path.join(win_fonts, "calibrib.ttf"),
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+    )
+    italic = _first_existing_font(
+        os.path.join(win_fonts, "calibrii.ttf"),
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansOblique.ttf",
+    )
+    return regular, bold or regular, italic or regular
+
+
 def normalize_classification(value):
     """Normalizza la classe elettrica letta da Ansur."""
     cls = (value or "").strip().upper().replace("CLASSE", "").replace("CLASS", "").strip()
@@ -375,11 +406,11 @@ class SchedaPDF(FPDF):
         self.data = data
         self.ed = edited
         self.set_auto_page_break(auto=False)
-        # Registra font Calibri
-        fonts_dir = r"C:\Windows\Fonts"
-        self.add_font("Calibri", "", os.path.join(fonts_dir, "calibri.ttf"), uni=True)
-        self.add_font("Calibri", "B", os.path.join(fonts_dir, "calibrib.ttf"), uni=True)
-        self.add_font("Calibri", "I", os.path.join(fonts_dir, "calibrii.ttf"), uni=True)
+        regular, bold, italic = pdf_font_paths()
+        if regular:
+            self.add_font("Calibri", "", regular, uni=True)
+            self.add_font("Calibri", "B", bold, uni=True)
+            self.add_font("Calibri", "I", italic, uni=True)
 
     def footer(self):
         self.set_y(285)
