@@ -573,7 +573,10 @@ def delete_all_anomalies(stato: str | None = "aperta", current_user: Utente = De
         query = query.join(LavoroVse, Anomalia.lavoro_id == LavoroVse.id).filter(LavoroVse.owner_user_id == current_user.id)
     if stato:
         query = query.filter(Anomalia.stato == stato)
-    deleted = query.delete(synchronize_session=False)
+    rows = query.all()
+    deleted = len(rows)
+    for row in rows:
+        db.delete(row)
     db.commit()
     return {"deleted": deleted}
 

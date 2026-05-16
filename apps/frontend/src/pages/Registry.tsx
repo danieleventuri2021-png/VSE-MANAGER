@@ -1,4 +1,4 @@
-import { Activity, ArrowUpDown, Calendar, ListChecks, LoaderCircle, Search, Trash2, UploadCloud, X } from "lucide-react";
+import { Activity, ArrowUpDown, Calendar, CheckCircle2, ListChecks, LoaderCircle, Search, Trash2, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, deleteRegistryEquipment, getRegistryMeasurements, getRegistryTrend, listRegistryClients, listRegistryEquipment, syncRegistry, type Job } from "../api/client";
 import { Panel } from "../components/Panel";
@@ -155,7 +155,7 @@ export function Registry({ jobs }: { jobs: Job[] }) {
           <button className="inline-flex h-10 items-center gap-2 rounded-md border border-red-200 px-3 text-sm text-red-700 disabled:cursor-not-allowed disabled:opacity-50" onClick={removeSelected} disabled={!selectedIds.length}><Trash2 size={16} /> Elimina selezionati ({selectedIds.length})</button>
         </div>
         {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        {report && <pre className="mt-4 overflow-auto rounded-md bg-slate-900 p-3 text-xs text-white">{JSON.stringify(report, null, 2)}</pre>}
+        {report && <RegistryReport report={report} />}
       </Panel>
       <Panel title={`Apparecchiature (${displayedRows.length})`}>
         <div className="overflow-x-auto">
@@ -183,6 +183,34 @@ export function Registry({ jobs }: { jobs: Job[] }) {
       {modal && <RegistryModal modal={modal} onClose={() => setModal(null)} />}
     </div>
   );
+}
+
+function RegistryReport({ report }: { report: any }) {
+  const skipped = report.skipped || [];
+  return (
+    <div className="mt-4 rounded-md border border-line bg-white p-4 text-sm">
+      <div className="mb-3 flex items-center gap-2 font-semibold text-ink"><CheckCircle2 className="text-action" size={18} /> Risultato aggiornamento archivio</div>
+      <div className="grid gap-2 sm:grid-cols-4">
+        <Metric label="Elaborati" value={report.processed ?? 0} />
+        <Metric label="Creati" value={report.created ?? 0} />
+        <Metric label="Aggiornati" value={report.updated ?? 0} />
+        <Metric label="Saltati" value={skipped.length} tone={skipped.length ? "warn" : "ok"} />
+      </div>
+      {skipped.length > 0 && (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">
+          <div className="mb-1 font-medium">Elementi non inseriti</div>
+          <ul className="grid gap-1 text-xs">
+            {skipped.map((item: any, index: number) => <li key={index}>MTR/CSV #{item.file_mtr_id || "-"}: {item.reason || "motivo non indicato"}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Metric({ label, value, tone }: { label: string; value: number; tone?: "ok" | "warn" }) {
+  const color = tone === "warn" ? "text-amber-700" : tone === "ok" ? "text-action" : "text-ink";
+  return <div className="rounded-md border border-line bg-slate-50 p-3"><div className="text-xs uppercase text-slate-500">{label}</div><div className={`mt-1 text-2xl font-semibold ${color}`}>{value}</div></div>;
 }
 
 function RegistryModal({ modal, onClose }: { modal: { title: string; type: "measurements" | "trend"; data: any }; onClose: () => void }) {

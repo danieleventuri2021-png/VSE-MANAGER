@@ -10,11 +10,15 @@ export function Anomalies({ onChanged }: { onChanged: () => void }) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [working, setWorking] = useState(false);
+  const [error, setError] = useState("");
 
   async function load() {
     setLoading(true);
+    setError("");
     try {
       setRows(await listAllAnomalies());
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Caricamento anomalie non riuscito.");
     } finally {
       setLoading(false);
     }
@@ -22,10 +26,13 @@ export function Anomalies({ onChanged }: { onChanged: () => void }) {
 
   async function removeOne(id: number) {
     setWorking(true);
+    setError("");
     try {
       await deleteAnomaly(id);
       await load();
       onChanged();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Cancellazione anomalia non riuscita.");
     } finally {
       setWorking(false);
     }
@@ -33,11 +40,16 @@ export function Anomalies({ onChanged }: { onChanged: () => void }) {
 
   async function removeAll() {
     if (!rows.length) return;
+    const first = window.confirm(`Cancellare tutte le ${rows.length} anomalie visualizzate?`);
+    if (!first) return;
     setWorking(true);
+    setError("");
     try {
       await deleteAllAnomalies();
       await load();
       onChanged();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Cancellazione anomalie non riuscita.");
     } finally {
       setWorking(false);
     }
@@ -59,9 +71,10 @@ export function Anomalies({ onChanged }: { onChanged: () => void }) {
       <div className="mb-4 flex justify-end">
         <button className="inline-flex h-10 items-center gap-2 rounded-md border border-red-200 px-3 text-sm text-red-700 transition hover:bg-red-50 disabled:cursor-wait disabled:opacity-60" onClick={removeAll} disabled={!rows.length || working}>
           <CheckCheck size={16} />
-          Cancella tutte quelle viste
+          Cancella tutte Anomalie
         </button>
       </div>
+      {error && <p className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <div className="grid gap-4">
         {grouped.map(([job, anomalies]) => (
           <section className="rounded-md border border-line" key={job}>
