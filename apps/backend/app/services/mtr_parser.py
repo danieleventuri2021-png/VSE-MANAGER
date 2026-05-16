@@ -24,6 +24,11 @@ def parse_mtr_file(path: str | Path) -> dict:
     if _looks_like_xml(content):
         try:
             parsed = _normalized_from_legacy_esa615(file_path, parse_mtr_legacy(file_path))
+            try:
+                fallback = parse_ansur_mtr(file_path)
+                parsed = _merge_xml_parses(parsed, fallback)
+            except Exception:
+                pass
         except Exception:
             try:
                 parsed = parse_ansur_mtr(file_path)
@@ -174,6 +179,21 @@ def _normalized_from_legacy_esa615(file_path: Path, legacy: dict) -> dict:
 
 
 def _merge_csv_parses(primary: dict, fallback: dict) -> dict:
+    merged = dict(primary)
+    for section in ("dut", "ansur", "test", "instrument"):
+        primary_section = dict(primary.get(section) or {})
+        fallback_section = fallback.get(section) or {}
+        for key, value in fallback_section.items():
+            if not primary_section.get(key):
+                primary_section[key] = value
+        merged[section] = primary_section
+    if not merged.get("measurements") and fallback.get("measurements"):
+        merged["measurements"] = fallback["measurements"]
+        merged["measurement_index"] = fallback.get("measurement_index") or build_measurement_index(fallback["measurements"])
+    return merged
+
+
+def _merge_xml_parses(primary: dict, fallback: dict) -> dict:
     merged = dict(primary)
     for section in ("dut", "ansur", "test", "instrument"):
         primary_section = dict(primary.get(section) or {})

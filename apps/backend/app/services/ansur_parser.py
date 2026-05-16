@@ -21,8 +21,8 @@ def parse_ansur_mtr(path: str | Path) -> dict[str, Any]:
             "manufacturer": _item_value(items, ("manufacturer", "produttore", "marca")),
             "model": _item_value(items, ("model", "modello")),
             "serial_number": _item_value(items, ("serial", "serial number", "matricola", "s/n")),
-            "inventory": _item_value(items, ("inventory", "inventario", "asset")),
-            "description": _item_value(items, ("description", "descrizione", "device", "equipment")),
+            "inventory": _item_value(items, ("inventory", "inventario", "asset", "equipment number", "invgest", "appliance code")),
+            "description": _item_value(items, ("description", "descrizione", "device", "other", "tipologia", "equipment")),
             "location": _item_value(items, ("location", "ubicazione", "presidio", "reparto")),
         },
         "ansur": {
