@@ -4,7 +4,17 @@ from app.models import LavoroVse, VerificaVse
 from app.services.vse_defaults import job_defaults
 
 
-DEFAULT_FIELDS = ("tecnico", "firma_path", "proprieta", "periodicita", "tensione", "frequenza", "protezione")
+DEFAULT_FIELDS = (
+    "tecnico",
+    "firma_path",
+    "proprieta",
+    "presidio",
+    "reparto",
+    "periodicita",
+    "tensione",
+    "frequenza",
+    "protezione",
+)
 
 
 def update_job_defaults(job: LavoroVse, values: dict[str, Any]) -> None:
