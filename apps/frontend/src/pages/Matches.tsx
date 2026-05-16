@@ -186,7 +186,7 @@ function Notice({ text }: { text: string }) {
 }
 
 function DataBlock({ title, data }: { title: string; data: any }) {
-  const fields = ["matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto"];
+  const fields = ["matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "stanza"];
   return (
     <div>
       <div className="mb-2 font-medium text-slate-700">{title}</div>

@@ -14,9 +14,10 @@ SAFE_FIELDS = {
     "produttore": ("manufacturer", "produttore", "marca"),
     "modello": ("model", "modello"),
     "matricola": ("serial", "serial number", "matricola", "s/n"),
-    "inventario": ("inventory", "inventario", "asset"),
-    "descrizione": ("description", "descrizione", "device"),
-    "reparto": ("location", "ubicazione", "reparto", "presidio"),
+    "inventario": ("equipment number", "appliance code", "inventory", "inventario", "asset", "invgest"),
+    "descrizione": ("other", "tipologia", "description", "descrizione", "device"),
+    "stanza": ("location", "stanza", "ubicazione"),
+    "reparto": ("reparto", "department"),
 }
 
 
@@ -81,7 +82,8 @@ def _normalize_updates(updates: dict) -> dict:
         "matricola": ("matricola", "serial", "seriale"),
         "inventario": ("inventario", "invGest", "equipmentNumber"),
         "descrizione": ("descrizione", "tipologia", "other"),
-        "reparto": ("reparto", "presidio", "location"),
+        "stanza": ("stanza", "location"),
+        "reparto": ("reparto", "department"),
     }
     normalized = {}
     for target, keys in aliases.items():
@@ -137,7 +139,7 @@ def _save_key_value_text(source: Path, updates: dict, separators: str = r"[:=]")
         for field, aliases in SAFE_FIELDS.items():
             if field not in updates:
                 continue
-            pattern = rf"^(\s*(?:{'|'.join(re.escape(alias) for alias in aliases)})\s*{separators}\s*)(.*)$"
+            pattern = rf"^(\s*(?:{'|'.join(re.escape(alias) for alias in aliases)})\s*(?:{separators}\s*)+)(.*)$"
             if re.match(pattern, line, flags=re.IGNORECASE):
                 new_line = re.sub(pattern, rf"\g<1>{updates[field]}", line, flags=re.IGNORECASE)
                 changed.append(field)

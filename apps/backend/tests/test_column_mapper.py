@@ -6,7 +6,7 @@ def test_map_columns_with_variable_names():
     assert mapping["matricola"] == "N. Serie"
     assert mapping["produttore"] == "Marca"
     assert mapping["modello"] == "Tipo"
-    assert mapping["reparto"] == "Ubicazione"
+    assert mapping["stanza"] == "Ubicazione"
 
 
 def test_extract_row_cleans_values():

@@ -15,5 +15,5 @@ def import_excel(path: str | Path) -> tuple[list[dict], dict[str, str]]:
     for index, row in df.iterrows():
         raw = {str(k): (None if str(v).lower() == "nan" else str(v).strip()) for k, v in row.to_dict().items()}
         normalized = extract_row(raw, mapping)
-        records.append({"row_index": int(index) + 2, "raw_data": raw, **normalized})
+        records.append({"row_index": int(index) + 2, "raw_data": {**raw, **normalized}, **normalized})
     return records, mapping

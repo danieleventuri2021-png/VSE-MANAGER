@@ -10,7 +10,7 @@ from app.services.measurement_selector import find_worst_protective_earth
 from app.services.mtr_parser import parse_mtr_file
 from app.services.pdf_generator import build_pdf_filename, generate_vse_pdf
 from app.services.source_writer import save_to_source
-from app.services.vse_defaults import ansur_defaults, merge_final_data
+from app.services.vse_defaults import ansur_defaults, merge_final_data, source_data
 
 
 def workdir() -> Path:
@@ -198,4 +198,52 @@ def test_source_writer_updates_safe_xml_fields_and_not_measurements():
     assert "New" in content
     assert "0.25" in content
     assert "produttore" in result["changed"]
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_dut_items_map_to_inventory_tipologia_and_stanza():
+    tmp_path = workdir()
+    source = tmp_path / "dut.mtr"
+    source.write_text(
+        """<?xml version="1.0"?>
+<Root><DUT>
+  <Item Name="Serial Number" Ord="1" Caption="Serial Number" Required="True" Key="True">200002621</Item>
+  <Item Name="Equipment Number" Ord="2" Caption="Appliance Code">19</Item>
+  <Item Name="Manufacturer" Ord="3" Caption="Manufacturer">CHINESPORT SPA</Item>
+  <Item Name="Model" Ord="4" Caption="Model">LS382B6WF</Item>
+  <Item Name="Location" Ord="5" Caption="Location">STANZA 1</Item>
+  <Item Name="Other" Ord="6" Caption="Other">LETTO ELETTRICO</Item>
+</DUT></Root>""",
+        encoding="utf-8",
+    )
+    parsed = parse_mtr_file(source)
+    final_source = source_data(parsed["normalized"])
+    assert parsed["matricola"] == "200002621"
+    assert parsed["inventario"] == "19"
+    assert parsed["descrizione"] == "LETTO ELETTRICO"
+    assert final_source["stanza"] == "STANZA 1"
+    assert final_source["presidio"] == ""
+    assert final_source["reparto"] == ""
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_source_writer_updates_dut_items_without_mapping_reparto_to_location():
+    tmp_path = workdir()
+    source = tmp_path / "source.mtr"
+    source.write_text(
+        """<?xml version="1.0"?>
+<Root><DUT>
+  <Item Name="Equipment Number" Ord="2" Caption="Appliance Code">200002621</Item>
+  <Item Name="Location" Ord="5" Caption="Location">NO NAME</Item>
+  <Item Name="Other" Ord="6" Caption="Other">LETTO ELETTRICO</Item>
+</DUT></Root>""",
+        encoding="utf-8",
+    )
+    result = save_to_source(source, {"inventario": "19", "descrizione": "LETTINO", "stanza": "STANZA 1", "reparto": "FISIOTERAPIA"}, tmp_path / "backup")
+    content = source.read_text(encoding="utf-8")
+    assert {"inventario", "descrizione", "stanza"}.issubset(set(result["changed"]))
+    assert "FISIOTERAPIA" not in content
+    assert "<Item Name=\"Equipment Number\" Ord=\"2\" Caption=\"Appliance Code\">19</Item>" in content
+    assert "<Item Name=\"Location\" Ord=\"5\" Caption=\"Location\">STANZA 1</Item>" in content
+    assert "<Item Name=\"Other\" Ord=\"6\" Caption=\"Other\">LETTINO</Item>" in content
     shutil.rmtree(tmp_path, ignore_errors=True)

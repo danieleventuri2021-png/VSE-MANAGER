@@ -1,4 +1,4 @@
-IMPORTANT_FIELDS = ("matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "esito")
+IMPORTANT_FIELDS = ("matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "stanza", "esito")
 
 
 def analyze_differences(equipment: dict, mtr: dict | None) -> dict:

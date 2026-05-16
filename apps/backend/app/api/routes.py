@@ -468,17 +468,17 @@ def resolve_match_differences(job_id: int, payload: MatchResolveRequest, current
         raise HTTPException(status_code=404, detail="Riga Excel non trovata")
     if not file_mtr or file_mtr.lavoro_id != job.id:
         raise HTTPException(status_code=404, detail="File MTR/CSV non trovato")
-    allowed_fields = {"matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto"}
+    allowed_fields = {"matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "stanza"}
     mtr_updates = {}
     excel_updates = {}
     for item in payload.fields:
         if item.field not in allowed_fields:
             raise HTTPException(status_code=400, detail=f"Campo non aggiornabile: {item.field}")
         if item.direction == "mtr_from_excel":
-            value = getattr(equipment, item.field, None)
+            value = _equipment_field_value(equipment, item.field)
             mtr_updates[item.field] = value
         elif item.direction == "excel_from_mtr":
-            value = getattr(file_mtr, item.field, None)
+            value = _mtr_field_value(file_mtr, item.field)
             excel_updates[item.field] = value
         else:
             raise HTTPException(status_code=400, detail=f"Direzione non valida: {item.direction}")
@@ -490,7 +490,8 @@ def resolve_match_differences(job_id: int, payload: MatchResolveRequest, current
     if excel_updates:
         raw_data = dict(equipment.raw_data or {})
         for field, value in excel_updates.items():
-            setattr(equipment, field, value)
+            if hasattr(equipment, field):
+                setattr(equipment, field, value)
             raw_data[field] = value
         equipment.raw_data = raw_data
     verification = _ensure_verification(db, file_mtr)
@@ -1031,6 +1032,8 @@ def _review_summary(db: Session, file_mtr: FileMtr) -> dict:
 
 def _equipment_dict(row: Apparecchiatura) -> dict:
     data = {field: getattr(row, field) for field in ("id", "row_index", "matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "raw_data")}
+    raw = row.raw_data or {}
+    data["stanza"] = raw.get("stanza") or raw.get("STANZA") or raw.get("Location") or raw.get("LOCATION") or raw.get("ubicazione")
     verification = row.verifiche[0] if row.verifiche else None
     data["esito"] = verification.esito_excel if verification else None
     data["data_verifica"] = verification.data_verifica if verification else None
@@ -1054,7 +1057,24 @@ def _anomaly_dict(row: Anomalia) -> dict:
 
 
 def _mtr_dict(row: FileMtr) -> dict:
-    return {field: getattr(row, field) for field in ("id", "path_corrente", "nome_file", "matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "parsed_data", "stato", "source_type", "template_ansur", "is_permanent_three_measure_template", "parsed_json", "measurement_index_json")}
+    data = {field: getattr(row, field) for field in ("id", "path_corrente", "nome_file", "matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "parsed_data", "stato", "source_type", "template_ansur", "is_permanent_three_measure_template", "parsed_json", "measurement_index_json")}
+    data["stanza"] = ((row.parsed_json or {}).get("dut") or {}).get("location") or row.reparto
+    return data
+
+
+def _equipment_field_value(row: Apparecchiatura, field: str) -> object:
+    if hasattr(row, field):
+        return getattr(row, field)
+    raw = row.raw_data or {}
+    return raw.get(field) or raw.get(field.upper()) or raw.get(field.capitalize())
+
+
+def _mtr_field_value(row: FileMtr, field: str) -> object:
+    if field == "stanza":
+        return ((row.parsed_json or {}).get("dut") or {}).get("location") or row.reparto
+    if hasattr(row, field):
+        return getattr(row, field)
+    return None
 
 
 def _match_reason(equipment: dict, mtr: dict | None) -> str:
