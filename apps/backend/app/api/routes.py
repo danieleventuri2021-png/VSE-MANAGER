@@ -662,6 +662,7 @@ def apply_job_defaults(job_id: int, payload: dict = Body(default={}), current_us
         verification = _ensure_verification(db, file_mtr)
         fields = apply_defaults_to_verification(job, verification, payload.get("values") or {})
         if fields:
+            verification.dati_finali_pdf_json = build_final_pdf_data(job, file_mtr, verification)
             changed.append({"file_mtr_id": file_mtr.id, "fields": fields})
     log_event(db, "job_defaults_applied", "Default lavoro applicati agli MTR/CSV non bloccati", lavoro_id=job_id, dettagli={"changed": len(changed)})
     db.commit()

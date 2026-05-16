@@ -34,5 +34,6 @@ def apply_defaults_to_verification(job: LavoroVse, verification: VerificaVse, va
         value = defaults.get(field)
         if value is not None and getattr(verification, field, None) != value:
             setattr(verification, field, value)
+            verification.dati_revisionati_json = {**(verification.dati_revisionati_json or {}), field: value}
             changed.append(field)
     return changed
