@@ -6,6 +6,17 @@ export default defineConfig({
   server: {
     host: "127.0.0.1",
     port: Number(process.env.VITE_FRONTEND_PORT || 5173),
+    strictPort: true,
+    proxy: {
+      "/api": {
+        target: process.env.VITE_BACKEND_PROXY || "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/health": {
+        target: process.env.VITE_BACKEND_PROXY || "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     sourcemap: false,
