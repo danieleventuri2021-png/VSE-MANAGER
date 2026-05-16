@@ -161,7 +161,8 @@ Equipment Current,,,,,0.1 A,-,-,P
     assert parsed["produttore"] == "GOLDEN STAR"
     assert parsed["modello"] == "ENDOR PLUS"
     assert parsed["descrizione"] == "TECAR TERAPIA"
-    assert parsed["reparto"] == "FT IVAN ROSI"
+    assert parsed["reparto"] in (None, "")
+    assert parsed["stanza"] == "FT IVAN ROSI"
     assert parsed["template_ansur"] == "IEC62353-Diretto Classe1-BF"
     assert (instrument.get("serialNumber") or instrument.get("serial_number")) == "7013015"
     assert (instrument.get("calibrationDate") or instrument.get("calibration_date")) == "10/17/2025"
@@ -225,6 +226,48 @@ def test_dut_items_map_to_inventory_tipologia_and_stanza():
     assert final_source["presidio"] == ""
     assert final_source["reparto"] == ""
     shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_final_pdf_data_does_not_promote_mtr_location_to_presidio_or_reparto():
+    job = type("Job", (), {"tecnico_default": "", "firma_default_path": "", "proprieta_default": "", "periodicita_default": "12", "tensione_default": "220", "frequenza_default": "50", "protezione_default": "", "template_pdf": "standard", "intestazione_pdf": "standard"})()
+    file_mtr = type(
+        "FileMtrObj",
+        (),
+        {
+            "produttore": "CHINESPORT SPA",
+            "modello": "LS382B6WF",
+            "matricola": "200002621",
+            "seriale": "200002621",
+            "inventario": "19",
+            "descrizione": "LETTO ELETTRICO",
+            "reparto": "NO NAME",
+            "template_ansur": "",
+            "nome_file": "sample.mtr",
+            "path_corrente": "sample.mtr",
+            "parsed_data": {},
+            "parsed_json": {
+                "dut": {
+                    "manufacturer": "CHINESPORT SPA",
+                    "model": "LS382B6WF",
+                    "serial_number": "200002621",
+                    "inventory": "19",
+                    "description": "LETTO ELETTRICO",
+                    "location": "NO NAME",
+                },
+                "ansur": {},
+                "test": {},
+                "instrument": {},
+                "measurements": [],
+            },
+        },
+    )()
+    verification = type("Verification", (), {"dati_excel_json": {}, "dati_revisionati_json": {}, "campi_bloccati_json": {}})()
+    from app.services.bulk_pdf_service import build_final_pdf_data
+
+    final = build_final_pdf_data(job, file_mtr, verification)
+    assert final["stanza"] == "NO NAME"
+    assert final["presidio"] == ""
+    assert final["reparto"] == ""
 
 
 def test_source_writer_updates_dut_items_without_mapping_reparto_to_location():

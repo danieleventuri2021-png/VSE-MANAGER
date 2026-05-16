@@ -76,10 +76,10 @@ def registry_data_from_pdf_data(job: LavoroVse, file_mtr: FileMtr, verification:
     return {
         "cliente_nome": job.cliente_nome or "Cliente non indicato",
         "owner_user_id": getattr(job, "owner_user_id", None),
-        "presidio": data.get("presidio") or data.get("location") or file_mtr.reparto,
-        "reparto": data.get("reparto") or file_mtr.reparto,
+        "presidio": data.get("presidio") or "",
+        "reparto": data.get("reparto") or "",
         "stanza": data.get("stanza") or "",
-        "ubicazione": " - ".join(part for part in [data.get("presidio") or data.get("location"), data.get("reparto") or file_mtr.reparto, data.get("stanza")] if part),
+        "ubicazione": " - ".join(part for part in [data.get("presidio"), data.get("reparto"), data.get("stanza")] if part),
         "tipologia": data.get("tipologia") or data.get("descrizione") or file_mtr.descrizione,
         "produttore": data.get("manufacturer") or data.get("produttore") or file_mtr.produttore,
         "modello": data.get("model") or data.get("modello") or file_mtr.modello,

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_final_pdf_data(job: LavoroVse, file_mtr: FileMtr, verification: VerificaVse | None = None) -> dict[str, Any]:
-    parsed = file_mtr.parsed_json or file_mtr.parsed_data.get("normalized") if file_mtr.parsed_data else {}
+    parsed = file_mtr.parsed_json or ((file_mtr.parsed_data or {}).get("normalized") if file_mtr.parsed_data else {})
     parsed = parsed or {}
     legacy = parsed.get("legacy") or {}
     file_fallback = {
@@ -22,7 +22,7 @@ def build_final_pdf_data(job: LavoroVse, file_mtr: FileMtr, verification: Verifi
         "seriale": file_mtr.seriale or "",
         "inventario": file_mtr.inventario or "",
         "descrizione": file_mtr.descrizione or "",
-        "reparto": file_mtr.reparto or "",
+        "reparto": "",
         "template_ansur": file_mtr.template_ansur or "",
         "nome_file": file_mtr.nome_file,
         "path_corrente": file_mtr.path_corrente,
@@ -38,7 +38,7 @@ def build_final_pdf_data(job: LavoroVse, file_mtr: FileMtr, verification: Verifi
         "equipmentNumber": legacy.get("equipmentNumber", ""),
         "manufacturer": legacy.get("manufacturer", ""),
         "model": legacy.get("model", ""),
-        "location": legacy.get("location", ""),
+        "stanza": legacy.get("location", ""),
         "other": legacy.get("other", ""),
         "tipologia": legacy.get("tipologia") or legacy.get("other", ""),
         "templateName": legacy.get("templateName", ""),
