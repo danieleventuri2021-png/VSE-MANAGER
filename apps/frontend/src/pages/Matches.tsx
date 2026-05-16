@@ -35,10 +35,10 @@ export function Matches({ jobs }: { jobs: Job[] }) {
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2">Riga</th><th>Matricola</th><th>Produttore</th><th>Modello</th><th>MTR</th><th>Stato</th><th>Score</th></tr></thead>
+          <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2">Riga</th><th>Matricola</th><th>Produttore</th><th>Modello</th><th>MTR/CSV</th><th>Stato</th><th>Score</th></tr></thead>
           <tbody>{rows.map((row, index) => <tr className="border-t border-line" key={index}><td className="py-2">{row.equipment?.row_index ?? "-"}</td><td>{row.equipment?.matricola || row.equipment?.seriale || row.mtr?.matricola || row.mtr?.seriale || "-"}</td><td>{row.equipment?.produttore || row.mtr?.produttore || "-"}</td><td>{row.equipment?.modello || row.mtr?.modello || "-"}</td><td>{row.mtr?.nome_file || "-"}</td><td><Badge status={row.status}>{row.status}</Badge></td><td>{row.score?.toFixed?.(1) ?? "-"}</td></tr>)}</tbody>
         </table>
-        {!loading && jobId > 0 && rows.length === 0 && <p className="border-t border-line py-4 text-sm text-slate-500">Nessun abbinamento disponibile. Importa Excel/MTR e avvia Analizza per questo lavoro.</p>}
+        {!loading && jobId > 0 && rows.length === 0 && <p className="border-t border-line py-4 text-sm text-slate-500">Nessun abbinamento disponibile. Importa Excel/MTR/CSV e avvia Analizza per questo lavoro.</p>}
       </div>
     </Panel>
   );

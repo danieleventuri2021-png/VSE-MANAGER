@@ -9,7 +9,7 @@ export function Jobs({ jobs }: { jobs: Job[] }) {
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="text-xs uppercase text-slate-500">
-            <tr><th className="py-2">ID</th><th>Titolo</th><th>Cliente</th><th>Stato</th><th>Excel</th><th>Cartella MTR</th><th>Aggiornato</th></tr>
+            <tr><th className="py-2">ID</th><th>Titolo</th><th>Cliente</th><th>Stato</th><th>Excel</th><th>Cartella MTR/CSV</th><th>Aggiornato</th></tr>
           </thead>
           <tbody>
             {jobs.map((job) => (

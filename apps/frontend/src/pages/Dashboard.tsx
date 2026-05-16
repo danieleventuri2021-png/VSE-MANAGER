@@ -30,7 +30,7 @@ export function Dashboard({ health, ports, jobs, onOpenAnomalies }: { health: an
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
-                <tr><th className="py-2">Titolo</th><th>Cliente</th><th>Stato</th><th>Righe</th><th>MTR</th></tr>
+                <tr><th className="py-2">Titolo</th><th>Cliente</th><th>Stato</th><th>Righe</th><th>MTR/CSV</th></tr>
               </thead>
               <tbody>
                 {jobs.slice(0, 8).map((job) => (

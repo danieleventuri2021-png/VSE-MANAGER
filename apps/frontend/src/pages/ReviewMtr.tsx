@@ -77,7 +77,7 @@ export function ReviewMtr({ jobs }: { jobs: Job[] }) {
   async function applyDefaults() {
     if (!jobId) return;
     await applyJobDefaults(jobId, { values: fields });
-    setMessage("Valori comuni applicati agli MTR non bloccati");
+    setMessage("Valori comuni applicati agli MTR/CSV non bloccati");
     await loadDetail();
   }
 
@@ -100,7 +100,7 @@ export function ReviewMtr({ jobs }: { jobs: Job[] }) {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <Panel title="MTR del lavoro" action={<RefreshButton loading={loadingList} onClick={loadList} />}>
+      <Panel title="MTR/CSV del lavoro" action={<RefreshButton loading={loadingList} onClick={loadList} />}>
         <select className="mb-3 h-10 w-full rounded-md border border-line px-3 text-sm" value={jobId} onChange={(event) => setJobId(Number(event.target.value))}>
           <option value={0}>Seleziona lavoro</option>
           {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
@@ -118,7 +118,7 @@ export function ReviewMtr({ jobs }: { jobs: Job[] }) {
         {message && <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div>}
         {detail && (
           <>
-            <Panel title="Revisione MTR - campi modulo VSS.GEN" action={<div className="flex flex-wrap gap-2"><button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={saveAsJobDefaults}>Salva default lavoro</button><button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={applyDefaults}><ShieldCheck size={16} /> Applica a tutti</button><button className="inline-flex h-9 items-center gap-2 rounded-md bg-action px-3 text-sm text-white" onClick={save}><Save size={16} /> Applica solo a questo MTR</button></div>}>
+            <Panel title="Revisione MTR/CSV - campi modulo VSS.GEN" action={<div className="flex flex-wrap gap-2"><button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={saveAsJobDefaults}>Salva default lavoro</button><button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={applyDefaults}><ShieldCheck size={16} /> Applica a tutti</button><button className="inline-flex h-9 items-center gap-2 rounded-md bg-action px-3 text-sm text-white" onClick={save}><Save size={16} /> Applica solo a questo MTR/CSV</button></div>}>
               <div className="grid gap-5">
                 {fieldGroups.map((group) => (
                   <section key={group.title}>
@@ -136,7 +136,7 @@ export function ReviewMtr({ jobs }: { jobs: Job[] }) {
             </Panel>
             <Panel title="Dati sorgente, Excel e finali">
               <div className="grid gap-4 lg:grid-cols-3">
-                <DataBlock title="MTR / Ansur" data={detail.source} />
+                <DataBlock title="MTR/CSV / Ansur" data={detail.source} />
                 <DataBlock title="Excel associato" data={detail.excel} />
                 <DataBlock title="Finale PDF" data={detail.final} badges={detail.badges} />
               </div>

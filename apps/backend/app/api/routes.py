@@ -315,7 +315,7 @@ def import_mtr_folder(job_id: int, payload: FolderRequest, current_user: Utente 
     job = _job_or_404(db, job_id, current_user)
     parsed_files = scan_mtr_folder(payload.folder_path)
     _replace_mtr_files(db, job, parsed_files, payload.folder_path)
-    log_event(db, "mtr_imported", f"Importati {len(parsed_files)} file MTR", lavoro_id=job_id)
+    log_event(db, "mtr_imported", f"Importati {len(parsed_files)} file MTR/CSV", lavoro_id=job_id)
     db.commit()
     db.refresh(job)
     return job
@@ -325,7 +325,7 @@ def import_mtr_folder(job_id: int, payload: FolderRequest, current_user: Utente 
 def upload_mtr_files(job_id: int, files: list[UploadFile] = File(...), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id, current_user)
     if not files:
-        raise HTTPException(status_code=400, detail="Nessun file MTR selezionato")
+        raise HTTPException(status_code=400, detail="Nessun file MTR/CSV selezionato")
 
     settings = get_settings()
     target_dir = Path(settings.input_dir) / f"job_{job_id}" / "mtr_upload"
@@ -353,7 +353,7 @@ def upload_mtr_files(job_id: int, files: list[UploadFile] = File(...), current_u
             raise HTTPException(status_code=400, detail=f"Formato file non supportato: {filename}")
 
     if not saved_paths:
-        raise HTTPException(status_code=400, detail="Nessun file MTR o CSV valido trovato")
+        raise HTTPException(status_code=400, detail="Nessun file MTR/CSV valido trovato")
 
     parsed_files = [parse_mtr_file(path) for path in sorted(saved_paths, key=lambda item: item.name.lower())]
     _replace_mtr_files(db, job, parsed_files, str(target_dir))
@@ -393,14 +393,14 @@ def analyze_job(job_id: int, current_user: Utente = Depends(get_current_user), d
             differences = analyze_differences(_equipment_dict(eq), _mtr_dict(mtr))
             if differences["fields"]:
                 counts["differenze"] += len(differences["fields"])
-                create_anomaly(db, job_id, "differenza_excel_mtr", "Differenze tra Excel e MTR", "warning", {"equipment_id": eq.id, "mtr_id": mtr.id, "fields": differences["fields"]})
+                create_anomaly(db, job_id, "differenza_excel_mtr", "Differenze tra Excel e MTR/CSV", "warning", {"equipment_id": eq.id, "mtr_id": mtr.id, "fields": differences["fields"]})
         else:
             eq.matched_file_mtr_id = None
-            create_anomaly(db, job_id, "mtr_mancante", "Nessun file MTR associato alla riga Excel", "error", {"equipment_id": eq.id, "score": match.score})
+            create_anomaly(db, job_id, "mtr_mancante", "Nessun file MTR/CSV associato alla riga Excel", "error", {"equipment_id": eq.id, "score": match.score})
         counts[match.status] += 1
     for index in orphans:
         mtr_rows[index].stato = "mtr_orfano"
-        create_anomaly(db, job_id, "mtr_orfano", "File MTR non associato ad alcuna riga Excel", "info", {"mtr_id": mtr_rows[index].id})
+        create_anomaly(db, job_id, "mtr_orfano", "File MTR/CSV non associato ad alcuna riga Excel", "info", {"mtr_id": mtr_rows[index].id})
     job.stato = "analizzato"
     job.summary = {**job.summary, **counts}
     log_event(db, "job_analyzed", "Analisi completata", lavoro_id=job_id, dettagli=counts)
@@ -507,7 +507,7 @@ def apply_job(job_id: int, current_user: Utente = Depends(get_current_user), db:
             conflicts.append({"from": old_path, "to": str(new_path)})
     job.stato = "applicato"
     job.summary = {**job.summary, "renamed": len(renamed), "rename_conflicts": len(conflicts), "last_backup": str(backup_dir)}
-    log_event(db, "changes_applied", "Aggiornamenti MTR applicati", lavoro_id=job_id, dettagli={"backup_dir": str(backup_dir), "renamed": len(renamed)})
+    log_event(db, "changes_applied", "Aggiornamenti MTR/CSV applicati", lavoro_id=job_id, dettagli={"backup_dir": str(backup_dir), "renamed": len(renamed)})
     db.commit()
     return ApplyResult(backup_dir=str(backup_dir), renamed=renamed, conflicts=conflicts)
 
@@ -590,7 +590,7 @@ def apply_job_defaults(job_id: int, payload: dict = Body(default={}), current_us
         fields = apply_defaults_to_verification(job, verification, payload.get("values") or {})
         if fields:
             changed.append({"file_mtr_id": file_mtr.id, "fields": fields})
-    log_event(db, "job_defaults_applied", "Default lavoro applicati agli MTR non bloccati", lavoro_id=job_id, dettagli={"changed": len(changed)})
+    log_event(db, "job_defaults_applied", "Default lavoro applicati agli MTR/CSV non bloccati", lavoro_id=job_id, dettagli={"changed": len(changed)})
     db.commit()
     return {"updated": len(changed), "items": changed}
 
@@ -599,7 +599,7 @@ def apply_job_defaults(job_id: int, payload: dict = Body(default={}), current_us
 def save_source(file_mtr_id: int, payload: dict = Body(default={}), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     file_mtr = db.get(FileMtr, file_mtr_id)
     if not file_mtr or not _can_access_job(file_mtr.lavoro, current_user):
-        raise HTTPException(status_code=404, detail="File MTR non trovato")
+        raise HTTPException(status_code=404, detail="File MTR/CSV non trovato")
     settings = get_settings()
     verification = _ensure_verification(db, file_mtr)
     updates = payload.get("fields") or verification.dati_revisionati_json or {}
@@ -901,7 +901,7 @@ def _job_or_404(db: Session, job_id: int, user: Utente) -> LavoroVse:
 def _file_or_404(db: Session, file_mtr_id: int, job_id: int | None = None, user: Utente | None = None) -> FileMtr:
     file_mtr = db.get(FileMtr, file_mtr_id)
     if not file_mtr or (job_id is not None and file_mtr.lavoro_id != job_id) or (user is not None and not _can_access_job(file_mtr.lavoro, user)):
-        raise HTTPException(status_code=404, detail="File MTR non trovato")
+        raise HTTPException(status_code=404, detail="File MTR/CSV non trovato")
     return file_mtr
 
 
@@ -983,7 +983,7 @@ def _field_badges(verification: VerificaVse, final: dict) -> dict:
         elif field in excel:
             badges[field] = "derivato da Excel"
         elif field in ansur and ansur.get(field):
-            badges[field] = "derivato da MTR"
+            badges[field] = "derivato da MTR/CSV"
         else:
             badges[field] = "default lavoro"
     return badges

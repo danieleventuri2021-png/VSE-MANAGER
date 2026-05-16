@@ -33,6 +33,8 @@ def parse_mtr_file(path: str | Path) -> dict:
     if file_path.suffix.lower() == ".csv":
         try:
             parsed = _normalized_from_legacy_esa615(file_path, parse_csv_legacy(file_path))
+            fallback = parse_esa615_csv(file_path)
+            parsed = _merge_csv_parses(parsed, fallback)
         except Exception:
             parsed = parse_esa615_csv(file_path)
         return _legacy_from_normalized(parsed)
@@ -169,3 +171,18 @@ def _normalized_from_legacy_esa615(file_path: Path, legacy: dict) -> dict:
         "measurements": measurements,
         "measurement_index": build_measurement_index(measurements),
     }
+
+
+def _merge_csv_parses(primary: dict, fallback: dict) -> dict:
+    merged = dict(primary)
+    for section in ("dut", "ansur", "test", "instrument"):
+        primary_section = dict(primary.get(section) or {})
+        fallback_section = fallback.get(section) or {}
+        for key, value in fallback_section.items():
+            if not primary_section.get(key):
+                primary_section[key] = value
+        merged[section] = primary_section
+    if not merged.get("measurements") and fallback.get("measurements"):
+        merged["measurements"] = fallback["measurements"]
+        merged["measurement_index"] = fallback.get("measurement_index") or build_measurement_index(fallback["measurements"])
+    return merged

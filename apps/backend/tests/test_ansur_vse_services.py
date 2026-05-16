@@ -129,6 +129,47 @@ def test_parse_minimal_csv():
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
+def test_parse_esa615_csv_report_format():
+    tmp_path = workdir()
+    path = tmp_path / "sample_esa615.csv"
+    path.write_text(
+        """,,,,,,,Date :15/05/2026
+Test Setup
+,,,,,DUT Information
+Operator ID :,,,,,Equipment Number :,,08
+Calibration Tech :,,SLT,,,Serial Number :,,02311023
+Calibration Date :,,10/17/2025,,,Manufacturer :,,GOLDEN STAR
+Firmware Version :,,3.01.03,,,Model :,,ENDOR PLUS
+Serial Number :,,7013015,,,Location :,,FT IVAN ROSI
+Date & Time :,,2026/05/15 & 09:06,,,Other :,,TECAR TERAPIA
+Template Name :,,IEC62353-Diretto Classe1-BF,,,Standard :,,IEC62353-Direct
+Classification:,,I
+AP Name,AP Type,AP Num
+Funz.1,BF,1
+ESA615 Test Results
+Test Name,,,,,Value,High Limits,Low Limits,Status
+Protective Earth Resistance,,,,,0.087 Ohm,0.3,-,P
+Equipment Current,,,,,0.1 A,-,-,P
+""",
+        encoding="utf-8",
+    )
+    parsed = parse_mtr_file(path)
+    instrument = parsed["normalized"]["instrument"]
+    assert parsed["normalized"]["source_type"] == "csv"
+    assert parsed["matricola"] == "02311023"
+    assert parsed["inventario"] == "08"
+    assert parsed["produttore"] == "GOLDEN STAR"
+    assert parsed["modello"] == "ENDOR PLUS"
+    assert parsed["descrizione"] == "TECAR TERAPIA"
+    assert parsed["reparto"] == "FT IVAN ROSI"
+    assert parsed["template_ansur"] == "IEC62353-Diretto Classe1-BF"
+    assert (instrument.get("serialNumber") or instrument.get("serial_number")) == "7013015"
+    assert (instrument.get("calibrationDate") or instrument.get("calibration_date")) == "10/17/2025"
+    assert len(parsed["normalized"]["measurements"]) == 2
+    assert parsed["normalized"]["measurements"][0]["result"] in {"PASS", "P"}
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 def test_merge_precedence_manual_over_defaults():
     final = merge_final_data(job_defaults_data={"tecnico": "Default", "tensione": "220"}, ansur_data={"tecnico": "Ansur"}, excel_data={"tecnico": "Excel"}, revised_data={"tecnico": "Manuale"}, locked_data={"tensione": "230"})
     assert final["tecnico"] == "Manuale"

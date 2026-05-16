@@ -39,10 +39,10 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
     setError("");
     try {
       await importMtrFolder(jobId, folder);
-      setMessage("Cartella MTR scansionata");
+      setMessage("Cartella MTR/CSV scansionata");
       onDone();
     } catch (err: any) {
-      setError(describeError(err, "Scansione cartella MTR non riuscita."));
+      setError(describeError(err, "Scansione cartella MTR/CSV non riuscita."));
     } finally {
       setBusy(false);
     }
@@ -57,7 +57,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
       setMessage(`Caricati ${mtrFiles.length} file MTR/CSV/ZIP`);
       onDone();
     } catch (err: any) {
-      setError(describeError(err, "Upload MTR non riuscito."));
+      setError(describeError(err, "Upload MTR/CSV non riuscito."));
     } finally {
       setBusy(false);
     }
@@ -107,7 +107,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
           <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runExcel} disabled={busy || !jobId || !file}><FileSpreadsheet size={18} /> Importa Excel</button>
         </div>
       </Panel>
-      <Panel title="Scansione MTR">
+      <Panel title="Scansione MTR/CSV">
         <div className="grid gap-3">
           <input
             className="text-sm"
@@ -118,7 +118,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
             disabled={busy}
           />
           <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtrUpload} disabled={busy || !jobId || mtrFiles.length === 0}>
-            <Upload size={18} /> Carica MTR/ZIP
+            <Upload size={18} /> Carica MTR/CSV/ZIP
           </button>
           <div className="flex items-center gap-2 pt-2 text-xs font-medium uppercase text-slate-500">
             <Archive size={14} /> Cartella sul server
@@ -126,7 +126,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
           <div className="flex flex-wrap gap-2">
             <label className="flex min-w-72 flex-1 items-center gap-2 rounded-md border border-line bg-white px-3">
               <FolderOpen size={16} className="shrink-0 text-slate-500" />
-              <input className="h-10 w-full border-0 bg-transparent text-sm outline-none" placeholder="C:\\percorso\\cartella\\mtr" value={folder} onChange={(event) => setFolder(event.target.value)} disabled={busy} />
+              <input className="h-10 w-full border-0 bg-transparent text-sm outline-none" placeholder="C:\\percorso\\cartella\\mtr-csv" value={folder} onChange={(event) => setFolder(event.target.value)} disabled={busy} />
             </label>
             <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60" onClick={() => setMtrPickerOpen(true)} disabled={busy}><FolderOpen size={16} /> Scegli cartella</button>
           </div>
@@ -141,7 +141,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
         {message && <p className="mt-3 text-sm text-action">{message}</p>}
         {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       </Panel>
-      {mtrPickerOpen && <FolderPicker initialPath={folder} title="Seleziona cartella MTR" onSelect={(path) => { setFolder(path); setMtrPickerOpen(false); }} onClose={() => setMtrPickerOpen(false)} />}
+      {mtrPickerOpen && <FolderPicker initialPath={folder} title="Seleziona cartella MTR/CSV" onSelect={(path) => { setFolder(path); setMtrPickerOpen(false); }} onClose={() => setMtrPickerOpen(false)} />}
     </div>
   );
 }
