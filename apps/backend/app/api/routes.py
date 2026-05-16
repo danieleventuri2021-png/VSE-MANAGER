@@ -20,6 +20,7 @@ from app.services.backup_service import create_backup
 from app.services.bulk_pdf_service import build_final_pdf_data, generate_all_pdfs, generate_one_pdf
 from app.services.equipment_registry_service import build_registry_ics, sync_job_registry
 from app.services.equipment_registry_service import normalize_identifier as normalize_registry_identifier
+from app.services.equipment_registry_service import registry_data_from_pdf_data, registry_match_score
 from app.services.difference_analyzer import analyze_differences
 from app.services.excel_importer import import_excel
 from app.services.file_renamer import rename_mtr
@@ -422,7 +423,7 @@ def analyze_job(job_id: int, current_user: Utente = Depends(get_current_user), d
 
 @router.get("/jobs/{job_id}/matches")
 def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
-    _job_or_404(db, job_id, current_user)
+    job = _job_or_404(db, job_id, current_user)
     rows = db.query(Apparecchiatura).filter(Apparecchiatura.lavoro_id == job_id).order_by(Apparecchiatura.row_index).all()
     matches = [
         {
@@ -432,6 +433,7 @@ def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), d
             "mtr": _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None,
             "reason": _match_reason(_equipment_dict(row), _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None),
             "differences": analyze_differences(_equipment_dict(row), _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None),
+            "registry_match": _registry_candidate_for_match(db, job, row.matched_file_mtr, row.verifiche[0] if row.verifiche else None),
         }
         for row in rows
     ]
@@ -449,6 +451,7 @@ def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), d
             "mtr": _mtr_dict(file_mtr),
             "reason": "File MTR/CSV senza riga Excel associata",
             "differences": {"missing_excel": True, "fields": []},
+            "registry_match": _registry_candidate_for_match(db, job, file_mtr, file_mtr.verifiche[0] if file_mtr.verifiche else None),
         }
         for file_mtr in orphan_mtrs
     )
@@ -817,8 +820,8 @@ def get_registry_equipment_trend(equipment_id: int, current_user: Utente = Depen
         if not file_mtr or not job:
             continue
         data = build_final_pdf_data(job, file_mtr, verification)
-        identifier = normalize_registry_identifier(_first_value(data.get("serial"), data.get("matricola"), data.get("seriale"), data.get("invGest"), data.get("inventario"), file_mtr.matricola, file_mtr.seriale, file_mtr.inventario))
-        if identifier != row.identificativo:
+        row_data = registry_data_from_pdf_data(job, file_mtr, verification, data)
+        if registry_match_score(row, row_data)["score"] < 90:
             continue
         date_value = data.get("testDate") or data.get("data_test") or data.get("data_verifica") or verification.data_verifica or verification.created_at.date().isoformat()
         history.append({"date": str(date_value), "measurements": _clean_measurements(data.get("measurements") or [])})
@@ -1125,6 +1128,26 @@ def _registry_dict(row: RegistroApparecchiatura) -> dict:
         "created_at": row.created_at,
         "updated_at": row.updated_at,
     }
+
+
+def _registry_candidate_for_match(db: Session, job: LavoroVse, file_mtr: FileMtr | None, verification: VerificaVse | None) -> dict | None:
+    if not file_mtr:
+        return None
+    data = build_final_pdf_data(job, file_mtr, verification)
+    row_data = registry_data_from_pdf_data(job, file_mtr, verification, data)
+    candidates = (
+        db.query(RegistroApparecchiatura)
+        .filter(
+            RegistroApparecchiatura.owner_user_id == row_data.get("owner_user_id"),
+            RegistroApparecchiatura.cliente_nome == row_data["cliente_nome"],
+        )
+        .all()
+    )
+    ranked = sorted(((registry_match_score(row, row_data), row) for row in candidates), key=lambda item: item[0]["score"], reverse=True)
+    if not ranked or ranked[0][0]["score"] < 90:
+        return None
+    score, row = ranked[0]
+    return {**_registry_dict(row), "match_score": score["score"], "match_reason": score["reason"]}
 
 
 def _folder_roots() -> list[dict[str, str]]:

@@ -114,6 +114,14 @@ function MatchDetail({
       </div>
       {row.status === "mancante" && <Notice text="Questa riga Excel non ha un file MTR/CSV associato con sufficiente confidenza." />}
       {row.status === "mtr_orfano" && <Notice text="Questo file MTR/CSV non è stato collegato ad alcuna riga Excel." />}
+      {row.registry_match && (
+        <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sky-900">
+          <div className="font-medium">Possibile apparecchiatura gia presente in archivio</div>
+          <div className="mt-1 text-xs">
+            {row.registry_match.match_reason} - {row.registry_match.cliente_nome} / {row.registry_match.tipologia || "-"} / {row.registry_match.produttore || "-"} {row.registry_match.modello || "-"} / Matricola {row.registry_match.matricola || "-"} / INVGEST {row.registry_match.inventario_gestionale || "-"}
+          </div>
+        </div>
+      )}
       {fields.length > 0 ? (
         <div className="overflow-x-auto rounded-md border border-line bg-white">
           <table className="w-full text-left text-xs">

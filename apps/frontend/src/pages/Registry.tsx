@@ -11,6 +11,7 @@ const columns = [
   { key: "produttore", label: "Marca" },
   { key: "modello", label: "Modello" },
   { key: "matricola", label: "Matricola" },
+  { key: "inventario_gestionale", label: "INVGEST" },
   { key: "ubicazione", label: "Ubicazione" },
   { key: "data_ultima_verifica", label: "Ultima VSE" },
   { key: "data_prossima_verifica", label: "Prossima VSE" },
@@ -75,13 +76,13 @@ export function Registry({ jobs }: { jobs: Job[] }) {
       columns.every((column) => {
         const needle = (filters[column.key] || "").trim().toLowerCase();
         if (!needle) return true;
-        const value = column.key === "matricola" ? row.matricola || row.inventario_gestionale : row[column.key];
+        const value = row[column.key];
         return String(value || "").toLowerCase().includes(needle);
       }),
     );
     return [...filtered].sort((a, b) => {
-      const left = String((sort.key === "matricola" ? a.matricola || a.inventario_gestionale : a[sort.key]) || "").toLowerCase();
-      const right = String((sort.key === "matricola" ? b.matricola || b.inventario_gestionale : b[sort.key]) || "").toLowerCase();
+      const left = String(a[sort.key] || "").toLowerCase();
+      const right = String(b[sort.key] || "").toLowerCase();
       return sort.dir === "asc" ? left.localeCompare(right) : right.localeCompare(left);
     });
   }, [rows, filters, sort]);
@@ -142,7 +143,7 @@ export function Registry({ jobs }: { jobs: Job[] }) {
               </tr>
             </thead>
             <tbody>
-              {displayedRows.map((row) => <tr className="border-t border-line" key={row.id}><td className="py-2">{row.cliente_nome}</td><td>{row.tipologia || "-"}</td><td>{row.produttore || "-"}</td><td>{row.modello || "-"}</td><td>{row.matricola || row.inventario_gestionale || "-"}</td><td>{row.ubicazione || row.reparto || "-"}</td><td>{formatItalianDate(row.data_ultima_verifica)}</td><td>{formatItalianDate(row.data_prossima_verifica)}</td><td><div className="flex gap-1"><button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" title="Valori misurati" onClick={() => openMeasurements(row)}><ListChecks size={16} /></button><button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" title="Trend misure" onClick={() => openTrend(row)}><Activity size={16} /></button></div></td></tr>)}
+              {displayedRows.map((row) => <tr className="border-t border-line" key={row.id}><td className="py-2">{row.cliente_nome}</td><td>{row.tipologia || "-"}</td><td>{row.produttore || "-"}</td><td>{row.modello || "-"}</td><td>{row.matricola || "-"}</td><td>{row.inventario_gestionale || "-"}</td><td>{row.ubicazione || row.reparto || "-"}</td><td>{formatItalianDate(row.data_ultima_verifica)}</td><td>{formatItalianDate(row.data_prossima_verifica)}</td><td><div className="flex gap-1"><button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" title="Valori misurati" onClick={() => openMeasurements(row)}><ListChecks size={16} /></button><button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" title="Trend misure" onClick={() => openTrend(row)}><Activity size={16} /></button></div></td></tr>)}
             </tbody>
           </table>
         </div>
