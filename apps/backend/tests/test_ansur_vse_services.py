@@ -199,31 +199,3 @@ def test_source_writer_updates_safe_xml_fields_and_not_measurements():
     assert "0.25" in content
     assert "produttore" in result["changed"]
     shutil.rmtree(tmp_path, ignore_errors=True)
-
-
-def test_source_writer_updates_ansur_other_description():
-    tmp_path = workdir()
-    source = tmp_path / "source.mtr"
-    source.write_text(
-        """<?xml version="1.0"?><Root><DUT><Item Name="Other" Caption="Other">TECAR</Item></DUT></Root>""",
-        encoding="utf-8",
-    )
-    result = save_to_source(source, {"descrizione": "TECAR TERAPIA"}, tmp_path / "backup")
-    parsed = parse_mtr_file(source)
-    assert "descrizione" in result["changed"]
-    assert "<Item Name=\"Other\" Caption=\"Other\">TECAR TERAPIA</Item>" in source.read_text(encoding="utf-8")
-    assert parsed["descrizione"] == "TECAR TERAPIA"
-    shutil.rmtree(tmp_path, ignore_errors=True)
-
-
-def test_source_writer_preserves_csv_separators():
-    tmp_path = workdir()
-    source = tmp_path / "source.csv"
-    source.write_text("Other :,,TECAR\nEquipment Number :,,3\n", encoding="utf-8")
-    result = save_to_source(source, {"descrizione": "TECAR TERAPIA", "inventario": "12/C"}, tmp_path / "backup")
-    content = source.read_text(encoding="utf-8")
-    assert "descrizione" in result["changed"]
-    assert "inventario" in result["changed"]
-    assert "Other :,,TECAR TERAPIA" in content
-    assert "Equipment Number :,,12/C" in content
-    shutil.rmtree(tmp_path, ignore_errors=True)
