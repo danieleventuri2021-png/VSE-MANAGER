@@ -1,0 +1,17 @@
+[Unit]
+Description=VSE Manager FastAPI backend
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/vse-manager/apps/backend
+EnvironmentFile=/opt/vse-manager/apps/backend/.env
+ExecStart=/opt/vse-manager/apps/backend/.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
