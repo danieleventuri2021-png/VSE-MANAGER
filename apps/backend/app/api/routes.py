@@ -76,6 +76,11 @@ class MatchResolveRequest(BaseModel):
     fields: list[MatchFieldResolution]
 
 
+class BulkDeleteRequest(BaseModel):
+    ids: list[int]
+    confirm: str
+
+
 @auth_router.post("/auth/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = authenticate_user(db, payload.username.strip(), payload.password)
@@ -268,6 +273,19 @@ def list_jobs(current_user: Utente = Depends(get_current_user), db: Session = De
 @router.get("/jobs/{job_id}", response_model=JobRead)
 def get_job(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     return _job_or_404(db, job_id, current_user)
+
+
+@router.delete("/jobs/{job_id}")
+def delete_job(job_id: int, confirm: str, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = _job_or_404(db, job_id, current_user)
+    expected = f"ELIMINA LAVORO {job.id}"
+    if confirm != expected:
+        raise HTTPException(status_code=400, detail=f"Conferma non valida. Digitare: {expected}")
+    _delete_job_pdf_files(job)
+    title = job.titolo
+    db.delete(job)
+    db.commit()
+    return {"deleted": job_id, "title": title}
 
 
 @router.post("/jobs/{job_id}/excel", response_model=JobRead)
@@ -792,6 +810,25 @@ def get_registry_equipment(equipment_id: int, current_user: Utente = Depends(get
     return _registry_dict(row)
 
 
+@router.delete("/registry/equipment")
+def delete_registry_equipment(payload: BulkDeleteRequest = Body(...), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    ids = sorted({int(item) for item in payload.ids if int(item) > 0})
+    if not ids:
+        raise HTTPException(status_code=400, detail="Nessuna apparecchiatura selezionata")
+    expected = f"ELIMINA {len(ids)} ARCHIVIO"
+    if payload.confirm != expected:
+        raise HTTPException(status_code=400, detail=f"Conferma non valida. Digitare: {expected}")
+    rows = db.query(RegistroApparecchiatura).filter(RegistroApparecchiatura.id.in_(ids)).all()
+    allowed = [row for row in rows if _can_access_registry(row, current_user)]
+    if len(allowed) != len(ids):
+        raise HTTPException(status_code=404, detail="Una o piu apparecchiature non sono accessibili")
+    summary = [{"id": row.id, "cliente_nome": row.cliente_nome, "identificativo": row.identificativo} for row in allowed]
+    for row in allowed:
+        db.delete(row)
+    db.commit()
+    return {"deleted": len(allowed), "items": summary}
+
+
 @router.get("/registry/equipment/{equipment_id}/measurements")
 def get_registry_equipment_measurements(equipment_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     row = db.get(RegistroApparecchiatura, equipment_id)
@@ -1231,6 +1268,16 @@ def _is_admin(user: Utente) -> bool:
 
 def _can_access_job(job: LavoroVse | None, user: Utente) -> bool:
     return bool(job and (_is_admin(user) or job.owner_user_id == user.id))
+
+
+def _delete_job_pdf_files(job: LavoroVse) -> None:
+    for row in job.pdf_generati or []:
+        try:
+            path = Path(row.percorso_pdf)
+            if path.exists() and path.is_file():
+                path.unlink()
+        except OSError:
+            pass
 
 
 def _can_access_registry(row: RegistroApparecchiatura, user: Utente) -> bool:

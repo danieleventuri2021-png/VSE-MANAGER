@@ -90,7 +90,7 @@ export default function App() {
       {error && <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
       <Suspense fallback={fallback}>
         {view === "dashboard" && <Dashboard health={health} ports={ports} jobs={jobs} onOpenAnomalies={openAnomalies} />}
-        {view === "jobs" && <Jobs jobs={jobs} />}
+        {view === "jobs" && <Jobs jobs={jobs} onChanged={refresh} />}
         {view === "new" && <NewJob onCreated={refresh} />}
         {view === "import" && <ImportPage jobs={jobs} onDone={refresh} />}
         {view === "matches" && <Matches jobs={jobs} />}

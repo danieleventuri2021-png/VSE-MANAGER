@@ -132,6 +132,11 @@ export async function getJobs(): Promise<Job[]> {
   return data;
 }
 
+export async function deleteJob(jobId: number, confirm: string) {
+  const { data } = await api.delete(`/api/jobs/${jobId}`, { params: { confirm } });
+  return data;
+}
+
 export async function createJob(payload: { titolo: string; cliente_nome?: string; mtr_folder?: string }) {
   const { data } = await api.post("/api/jobs", payload);
   return data as Job;
@@ -265,6 +270,11 @@ export async function deleteAllAnomalies() {
 
 export async function listRegistryEquipment(params?: { cliente?: string; due_before?: string }) {
   const { data } = await api.get("/api/registry/equipment", { params });
+  return data;
+}
+
+export async function deleteRegistryEquipment(ids: number[], confirm: string) {
+  const { data } = await api.delete("/api/registry/equipment", { data: { ids, confirm } });
   return data;
 }
 

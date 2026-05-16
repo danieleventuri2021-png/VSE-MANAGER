@@ -1,6 +1,6 @@
-import { Activity, ArrowUpDown, Calendar, ListChecks, LoaderCircle, Search, UploadCloud, X } from "lucide-react";
+import { Activity, ArrowUpDown, Calendar, ListChecks, LoaderCircle, Search, Trash2, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, getRegistryMeasurements, getRegistryTrend, listRegistryClients, listRegistryEquipment, syncRegistry, type Job } from "../api/client";
+import { api, deleteRegistryEquipment, getRegistryMeasurements, getRegistryTrend, listRegistryClients, listRegistryEquipment, syncRegistry, type Job } from "../api/client";
 import { Panel } from "../components/Panel";
 import { RefreshButton } from "../components/RefreshButton";
 import { formatItalianDate } from "../lib/date";
@@ -26,6 +26,7 @@ export function Registry({ jobs }: { jobs: Job[] }) {
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "cliente_nome", dir: "asc" });
   const [report, setReport] = useState<any>(null);
   const [modal, setModal] = useState<{ title: string; type: "measurements" | "trend"; data: any } | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
@@ -36,6 +37,7 @@ export function Registry({ jobs }: { jobs: Job[] }) {
     try {
       setRows(await listRegistryEquipment(cliente ? { cliente } : undefined));
       setClients(await listRegistryClients());
+      setSelectedIds([]);
     } catch (err: any) {
       setError(err?.response?.data?.detail || err?.message || "Caricamento archivio non riuscito.");
     } finally {
@@ -87,6 +89,8 @@ export function Registry({ jobs }: { jobs: Job[] }) {
     });
   }, [rows, filters, sort]);
 
+  const selectedDisplayed = displayedRows.filter((row) => selectedIds.includes(row.id)).length;
+
   async function openMeasurements(row: any) {
     setError("");
     try {
@@ -107,6 +111,30 @@ export function Registry({ jobs }: { jobs: Job[] }) {
     }
   }
 
+  function toggleRow(id: number) {
+    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+
+  function toggleDisplayed(checked: boolean) {
+    const ids = displayedRows.map((row) => row.id);
+    setSelectedIds((current) => checked ? Array.from(new Set([...current, ...ids])) : current.filter((id) => !ids.includes(id)));
+  }
+
+  async function removeSelected() {
+    if (!selectedIds.length) return;
+    const first = window.confirm(`Eliminare ${selectedIds.length} apparecchiature dall'archivio?`);
+    if (!first) return;
+    const expected = `ELIMINA ${selectedIds.length} ARCHIVIO`;
+    const typed = window.prompt(`Conferma definitiva: digita ${expected}`);
+    if (typed !== expected) return;
+    try {
+      await deleteRegistryEquipment(selectedIds, typed);
+      await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Cancellazione archivio non riuscita.");
+    }
+  }
+
   useEffect(() => { load(); }, []);
 
   return (
@@ -124,6 +152,7 @@ export function Registry({ jobs }: { jobs: Job[] }) {
           </select>
           <button className="inline-flex h-10 items-center gap-2 rounded-md bg-action px-3 text-sm text-white disabled:cursor-wait disabled:opacity-70" onClick={sync} disabled={syncing}>{syncing ? <LoaderCircle size={16} className="animate-spin" /> : <UploadCloud size={16} />} {syncing ? "Aggiorno archivio..." : "Aggiorna archivio da lavoro"}</button>
           <a className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm" href={calendarUrl()}><Calendar size={16} /> Esporta Google Calendar</a>
+          <button className="inline-flex h-10 items-center gap-2 rounded-md border border-red-200 px-3 text-sm text-red-700 disabled:cursor-not-allowed disabled:opacity-50" onClick={removeSelected} disabled={!selectedIds.length}><Trash2 size={16} /> Elimina selezionati ({selectedIds.length})</button>
         </div>
         {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {report && <pre className="mt-4 overflow-auto rounded-md bg-slate-900 p-3 text-xs text-white">{JSON.stringify(report, null, 2)}</pre>}
@@ -133,6 +162,9 @@ export function Registry({ jobs }: { jobs: Job[] }) {
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-500">
               <tr>
+                <th className="w-10 py-2 pr-2 align-top">
+                  <input type="checkbox" checked={displayedRows.length > 0 && selectedDisplayed === displayedRows.length} onChange={(event) => toggleDisplayed(event.target.checked)} />
+                </th>
                 {columns.map((column) => (
                   <th className="min-w-32 py-2 pr-2 align-top" key={column.key}>
                     <button className="mb-2 inline-flex items-center gap-1 font-semibold uppercase" onClick={() => sortBy(column.key)}>{column.label}<ArrowUpDown size={13} /></button>
@@ -143,7 +175,7 @@ export function Registry({ jobs }: { jobs: Job[] }) {
               </tr>
             </thead>
             <tbody>
-              {displayedRows.map((row) => <tr className="border-t border-line" key={row.id}><td className="py-2">{row.cliente_nome}</td><td>{row.tipologia || "-"}</td><td>{row.produttore || "-"}</td><td>{row.modello || "-"}</td><td>{row.matricola || "-"}</td><td>{row.inventario_gestionale || "-"}</td><td>{row.ubicazione || row.reparto || "-"}</td><td>{formatItalianDate(row.data_ultima_verifica)}</td><td>{formatItalianDate(row.data_prossima_verifica)}</td><td><div className="flex gap-1"><button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" title="Valori misurati" onClick={() => openMeasurements(row)}><ListChecks size={16} /></button><button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" title="Trend misure" onClick={() => openTrend(row)}><Activity size={16} /></button></div></td></tr>)}
+              {displayedRows.map((row) => <tr className="border-t border-line" key={row.id}><td className="py-2"><input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleRow(row.id)} /></td><td>{row.cliente_nome}</td><td>{row.tipologia || "-"}</td><td>{row.produttore || "-"}</td><td>{row.modello || "-"}</td><td>{row.matricola || "-"}</td><td>{row.inventario_gestionale || "-"}</td><td>{row.ubicazione || row.reparto || "-"}</td><td>{formatItalianDate(row.data_ultima_verifica)}</td><td>{formatItalianDate(row.data_prossima_verifica)}</td><td><div className="flex gap-1"><button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" title="Valori misurati" onClick={() => openMeasurements(row)}><ListChecks size={16} /></button><button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line" title="Trend misure" onClick={() => openTrend(row)}><Activity size={16} /></button></div></td></tr>)}
             </tbody>
           </table>
         </div>
