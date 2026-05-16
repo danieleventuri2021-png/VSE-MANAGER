@@ -75,6 +75,36 @@ def test_parse_minimal_mtr_xml():
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
+def test_parse_mtr_uses_test_instruments_for_esa_data():
+    tmp_path = workdir()
+    path = tmp_path / "instrument.mtr"
+    path.write_text(
+        """<?xml version="1.0"?>
+<Ansur>
+  <DUT>
+    <Item Name="Serial Number">200002621</Item>
+  </DUT>
+  <TestInstruments>
+    <MTIData PlugIn="ESA615" ID="1">
+      <Type>ESA615</Type>
+      <SerialNumber>7013015</SerialNumber>
+      <Version>3.01.03</Version>
+      <CalibrationDate>10/17/2025</CalibrationDate>
+    </MTIData>
+  </TestInstruments>
+</Ansur>""",
+        encoding="utf-8",
+    )
+    parsed = parse_ansur_mtr(path)
+    instrument = parsed["instrument"]
+    assert parsed["dut"]["serial_number"] == "200002621"
+    assert instrument["type"] == "ESA615"
+    assert instrument["serial_number"] == "7013015"
+    assert instrument["version"] == "3.01.03"
+    assert instrument["calibration_date"] == "10/17/2025"
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
 def test_malformed_xml_mtr_falls_back_to_text_parse():
     tmp_path = workdir()
     path = tmp_path / "broken.mtr"

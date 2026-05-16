@@ -13,6 +13,7 @@ def parse_ansur_mtr(path: str | Path) -> dict[str, Any]:
     root = ET.fromstring(read_xml_document_text(file_path))
     items = _all_items(root)
     measurements = _measurements(root)
+    instrument = _instrument_data(root)
     template_name = _first_text(root, ("TemplateName", "ProcedureName", "TestTemplate", "Template")) or _attr_contains(root, "template")
     normalized = {
         "source_type": "mtr",
@@ -36,10 +37,11 @@ def parse_ansur_mtr(path: str | Path) -> dict[str, Any]:
             "status": _find_status(root),
         },
         "instrument": {
-            "type": _find_text_contains(root, ("ESA615",)) or "ESA615",
+            "type": instrument.get("type") or _find_text_contains(root, ("ESA615",)) or "ESA615",
             "manufacturer": _find_text_contains(root, ("Fluke",)) or "Fluke Biomedical",
-            "serial_number": _find_text_any(root, ("InstrumentSerial", "AnalyzerSerial", "SerialNumber")),
-            "calibration_date": _find_text_any(root, ("CalibrationDate", "CalDate", "Calibrazione")),
+            "serial_number": instrument.get("serial_number") or _find_text_any(root, ("InstrumentSerial", "AnalyzerSerial")),
+            "version": instrument.get("version") or "",
+            "calibration_date": instrument.get("calibration_date") or _find_text_any(root, ("CalibrationDate", "CalDate", "Calibrazione")),
         },
         "measurements": measurements,
         "unrecognized": [],
@@ -104,6 +106,25 @@ def _measurements(root: ET.Element) -> list[dict[str, Any]]:
             }
         )
     return result
+
+
+def _instrument_data(root: ET.Element) -> dict[str, str]:
+    for element in root.iter():
+        if _strip(element.tag) != "mtidata":
+            continue
+        attrs = {key.lower(): value for key, value in element.attrib.items()}
+        plugin = attrs.get("plugin") or attrs.get("pluginname") or ""
+        children = {_strip(child.tag): _text(child) for child in list(element) if _text(child)}
+        instrument_type = children.get("type") or plugin
+        if instrument_type and "esa" not in instrument_type.lower() and "esa" not in plugin.lower():
+            continue
+        return {
+            "type": instrument_type,
+            "serial_number": children.get("serialnumber") or children.get("serial_number") or "",
+            "version": children.get("version") or "",
+            "calibration_date": children.get("calibrationdate") or children.get("calibration_date") or "",
+        }
+    return {}
 
 
 def _first_text(root: ET.Element, names: tuple[str, ...]) -> str | None:
