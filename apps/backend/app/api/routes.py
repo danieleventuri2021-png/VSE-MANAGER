@@ -64,6 +64,17 @@ class UserUpdateRequest(BaseModel):
     password: str | None = None
 
 
+class MatchFieldResolution(BaseModel):
+    field: str
+    direction: str
+
+
+class MatchResolveRequest(BaseModel):
+    equipment_id: int
+    file_mtr_id: int
+    fields: list[MatchFieldResolution]
+
+
 @auth_router.post("/auth/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = authenticate_user(db, payload.username.strip(), payload.password)
@@ -444,6 +455,64 @@ def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), d
     return matches
 
 
+@router.post("/jobs/{job_id}/matches/resolve")
+def resolve_match_differences(job_id: int, payload: MatchResolveRequest, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    settings = get_settings()
+    job = _job_or_404(db, job_id, current_user)
+    equipment = db.get(Apparecchiatura, payload.equipment_id)
+    file_mtr = db.get(FileMtr, payload.file_mtr_id)
+    if not equipment or equipment.lavoro_id != job.id:
+        raise HTTPException(status_code=404, detail="Riga Excel non trovata")
+    if not file_mtr or file_mtr.lavoro_id != job.id:
+        raise HTTPException(status_code=404, detail="File MTR/CSV non trovato")
+    allowed_fields = {"matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto"}
+    mtr_updates = {}
+    excel_updates = {}
+    for item in payload.fields:
+        if item.field not in allowed_fields:
+            raise HTTPException(status_code=400, detail=f"Campo non aggiornabile: {item.field}")
+        if item.direction == "mtr_from_excel":
+            value = getattr(equipment, item.field, None)
+            mtr_updates[item.field] = value
+        elif item.direction == "excel_from_mtr":
+            value = getattr(file_mtr, item.field, None)
+            excel_updates[item.field] = value
+        else:
+            raise HTTPException(status_code=400, detail=f"Direzione non valida: {item.direction}")
+    source_result = None
+    if mtr_updates:
+        source_result = save_to_source(file_mtr.path_corrente, mtr_updates, settings.backup_dir)
+        parsed = source_result["parsed"]
+        _update_file_mtr_from_parsed(file_mtr, parsed)
+    if excel_updates:
+        raw_data = dict(equipment.raw_data or {})
+        for field, value in excel_updates.items():
+            setattr(equipment, field, value)
+            raw_data[field] = value
+        equipment.raw_data = raw_data
+    verification = _ensure_verification(db, file_mtr)
+    equipment.matched_file_mtr_id = file_mtr.id
+    verification.apparecchiatura_id = equipment.id
+    verification.dati_ansur_json = file_mtr.parsed_json or {}
+    verification.dati_excel_json = equipment.raw_data or {}
+    differences = analyze_differences(_equipment_dict(equipment), _mtr_dict(file_mtr))
+    if not differences["fields"]:
+        equipment.match_status = "certo"
+        file_mtr.stato = "abbinato"
+    log_event(db, "match_resolved", "Differenze abbinamento risolte", lavoro_id=job_id, dettagli={"equipment_id": equipment.id, "file_mtr_id": file_mtr.id, "mtr_fields": list(mtr_updates), "excel_fields": list(excel_updates), "source_backup": source_result.get("backup") if source_result else None})
+    db.commit()
+    db.refresh(equipment)
+    db.refresh(file_mtr)
+    return {
+        "equipment": _equipment_dict(equipment),
+        "mtr": _mtr_dict(file_mtr),
+        "status": equipment.match_status,
+        "score": equipment.match_score,
+        "reason": _match_reason(_equipment_dict(equipment), _mtr_dict(file_mtr)),
+        "differences": analyze_differences(_equipment_dict(equipment), _mtr_dict(file_mtr)),
+    }
+
+
 @router.get("/jobs/{job_id}/anomalies")
 def get_anomalies(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     _job_or_404(db, job_id, current_user)
@@ -799,6 +868,24 @@ def _replace_mtr_files(db: Session, job: LavoroVse, parsed_files: list[dict], fo
     job.mtr_folder = folder_path
     job.stato = "mtr_importati"
     job.summary = {**(job.summary or {}), "mtr_files": len(parsed_files)}
+
+
+def _update_file_mtr_from_parsed(row: FileMtr, parsed: dict) -> None:
+    row.parsed_data = parsed
+    row.parsed_json = parsed.get("normalized") or {}
+    row.measurement_index_json = parsed.get("measurement_index") or {}
+    row.matricola = parsed.get("matricola")
+    row.seriale = parsed.get("seriale")
+    row.inventario = parsed.get("inventario")
+    row.produttore = parsed.get("produttore")
+    row.modello = parsed.get("modello")
+    row.descrizione = parsed.get("descrizione")
+    row.reparto = parsed.get("reparto")
+    row.esito = parsed.get("esito")
+    row.template_ansur = parsed.get("template_ansur")
+    row.is_permanent_three_measure_template = bool(parsed.get("is_permanent_three_measure_template"))
+    row.source_type = (parsed.get("normalized") or {}).get("source_type", row.source_type)
+    row.last_source_write_at = datetime.utcnow()
 
 
 def _extract_mtr_zip(zip_path: Path, output_dir: Path) -> list[Path]:

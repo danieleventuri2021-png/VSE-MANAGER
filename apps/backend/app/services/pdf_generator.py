@@ -23,8 +23,8 @@ def build_pdf_filename(data: dict) -> str:
 def generate_vse_pdf(data: dict, output_dir: str | Path, template_pdf: str = "standard", header_image: str | None = None) -> dict:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
-    legacy_data = to_legacy_data(data)
-    legacy_edited = apply_template_defaults_legacy(legacy_data, to_legacy_edited(data))
+    legacy_data = _pdf_ready_data(to_legacy_data(data))
+    legacy_edited = _pdf_ready_edited(apply_template_defaults_legacy(legacy_data, to_legacy_edited(data)))
     filename = build_pdf_filename({**data, **legacy_edited})
     path = output / filename
     generate_pdf_legacy(legacy_data, legacy_edited, path, header_image=header_image)
@@ -134,3 +134,21 @@ def _legacy_status(value: object) -> str:
 def _visual_value(data: dict, key: str) -> str:
     visual = data.get("controlli_visivi") or data.get("esame_a_vista") or data.get("controlli_visivi_json") or {}
     return visual.get(key) or "OK"
+
+
+def _pdf_ready_edited(data: dict) -> dict:
+    keep_empty = {"firma_path"}
+    return {key: (value if key in keep_empty or value not in (None, "") else "-") for key, value in data.items()}
+
+
+def _pdf_ready_data(data: dict) -> dict:
+    result = dict(data)
+    for key in ("sourceFile", "serialNumber", "equipmentNumber", "manufacturer", "model", "location", "other", "tipologia", "templateName", "classification", "apType", "testDate", "overallStatus"):
+        if result.get(key) in (None, ""):
+            result[key] = "-"
+    instrument = dict(result.get("instrument") or {})
+    for key in ("type", "serialNumber", "calibrationDate"):
+        if instrument.get(key) in (None, ""):
+            instrument[key] = "-"
+    result["instrument"] = instrument
+    return result

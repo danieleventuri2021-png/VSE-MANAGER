@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight, GitCompare } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, ChevronDown, ChevronRight, GitCompare } from "lucide-react";
 import { api, type Job } from "../api/client";
 import { Badge } from "../components/Badge";
 import { Panel } from "../components/Panel";
@@ -10,6 +10,8 @@ export function Matches({ jobs }: { jobs: Job[] }) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [openRow, setOpenRow] = useState<number | null>(null);
+  const [choices, setChoices] = useState<Record<string, "mtr_from_excel" | "excel_from_mtr">>({});
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!jobId) return;
@@ -17,6 +19,7 @@ export function Matches({ jobs }: { jobs: Job[] }) {
     try {
       const { data } = await api.get(`/api/jobs/${jobId}/matches`);
       setRows(data);
+      setChoices({});
     } finally {
       setLoading(false);
     }
@@ -59,7 +62,7 @@ export function Matches({ jobs }: { jobs: Job[] }) {
                     <td><Badge status={row.status}>{row.status}</Badge></td>
                     <td>{row.score?.toFixed?.(1) ?? "-"}</td>
                   </tr>
-                  {opened && <tr className="border-t border-line bg-slate-50"><td colSpan={7}><MatchDetail row={row} /></td></tr>}
+                  {opened && <tr className="border-t border-line bg-slate-50"><td colSpan={7}><MatchDetail row={row} rowIndex={index} choices={choices} setChoices={setChoices} onConfirm={confirmChoices} saving={saving} /></td></tr>}
                 </Fragment>
               );
             })}
@@ -69,10 +72,40 @@ export function Matches({ jobs }: { jobs: Job[] }) {
       </div>
     </Panel>
   );
+
+  async function confirmChoices(row: any, rowIndex: number) {
+    const fields = Object.entries(choices)
+      .filter(([key]) => key.startsWith(`${rowIndex}:`))
+      .map(([key, direction]) => ({ field: key.split(":")[1], direction }));
+    if (!jobId || !row.equipment?.id || !row.mtr?.id || fields.length === 0 || saving) return;
+    setSaving(true);
+    try {
+      await api.post(`/api/jobs/${jobId}/matches/resolve`, { equipment_id: row.equipment.id, file_mtr_id: row.mtr.id, fields });
+      await load();
+      setOpenRow(rowIndex);
+    } finally {
+      setSaving(false);
+    }
+  }
 }
 
-function MatchDetail({ row }: { row: any }) {
+function MatchDetail({
+  row,
+  rowIndex,
+  choices,
+  setChoices,
+  onConfirm,
+  saving,
+}: {
+  row: any;
+  rowIndex: number;
+  choices: Record<string, "mtr_from_excel" | "excel_from_mtr">;
+  setChoices: (choices: Record<string, "mtr_from_excel" | "excel_from_mtr">) => void;
+  onConfirm: (row: any, rowIndex: number) => void;
+  saving: boolean;
+}) {
   const fields = row.differences?.fields || [];
+  const selected = fields.filter((field: any) => choices[choiceKey(rowIndex, field.field)]).length;
   return (
     <div className="grid gap-3 p-3 text-sm">
       <div className="flex items-center gap-2 text-slate-700">
@@ -84,15 +117,37 @@ function MatchDetail({ row }: { row: any }) {
       {fields.length > 0 ? (
         <div className="overflow-x-auto rounded-md border border-line bg-white">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-100 uppercase text-slate-500"><tr><th className="p-2">Campo</th><th>Excel</th><th>MTR/CSV</th></tr></thead>
+            <thead className="bg-slate-100 uppercase text-slate-500"><tr><th className="p-2">Campo</th><th>Excel</th><th>MTR/CSV</th><th>Allinea</th></tr></thead>
             <tbody>
-              {fields.map((field: any) => (
+              {fields.map((field: any) => {
+                const key = choiceKey(rowIndex, field.field);
+                const choice = choices[key];
+                return (
                 <tr className="border-t border-line" key={field.field}>
                   <td className="p-2 font-medium">{field.field}</td>
                   <td className="pr-2">{field.excel || "-"}</td>
-                  <td>{field.mtr || "-"}</td>
+                  <td className="pr-2">{field.mtr || "-"}</td>
+                  <td className="p-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        className={`inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs ${choice === "mtr_from_excel" ? "border-action bg-blue-50 text-action" : "border-line bg-white"}`}
+                        title="Aggiorna MTR/CSV con il valore Excel"
+                        onClick={() => setChoices({ ...choices, [key]: "mtr_from_excel" })}
+                      >
+                        Excel <ArrowRight size={14} /> MTR/CSV
+                      </button>
+                      <button
+                        className={`inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs ${choice === "excel_from_mtr" ? "border-action bg-blue-50 text-action" : "border-line bg-white"}`}
+                        title="Aggiorna Excel/database con il valore MTR/CSV"
+                        onClick={() => setChoices({ ...choices, [key]: "excel_from_mtr" })}
+                      >
+                        Excel <ArrowLeft size={14} /> MTR/CSV
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -102,8 +157,20 @@ function MatchDetail({ row }: { row: any }) {
           <DataBlock title="MTR/CSV" data={row.mtr} />
         </div>
       )}
+      {fields.length > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-white p-3">
+          <span className="text-xs text-slate-500">{selected} campi selezionati per l'allineamento</span>
+          <button className="inline-flex h-9 items-center gap-2 rounded-md bg-action px-3 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60" disabled={selected === 0 || saving} onClick={() => onConfirm(row, rowIndex)}>
+            <Check size={16} /> {saving ? "Conferma..." : "Conferma allineamento"}
+          </button>
+        </div>
+      )}
     </div>
   );
+}
+
+function choiceKey(rowIndex: number, field: string) {
+  return `${rowIndex}:${field}`;
 }
 
 function Notice({ text }: { text: string }) {
