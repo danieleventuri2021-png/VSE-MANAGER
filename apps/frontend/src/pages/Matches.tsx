@@ -48,7 +48,7 @@ export function Matches({ jobs }: { jobs: Job[] }) {
               const opened = openRow === index;
               return (
                 <Fragment key={index}>
-                  <tr className={`border-t border-line ${expandable ? "cursor-pointer hover:bg-slate-50" : ""}`} onClick={() => expandable && setOpenRow(opened ? null : index)}>
+                  <tr className={`border-t border-line ${expandable ? "cursor-pointer bg-amber-50 hover:bg-amber-100" : ""}`} onClick={() => expandable && setOpenRow(opened ? null : index)}>
                     <td className="py-2">
                       <span className="inline-flex items-center gap-1">
                         {expandable ? opened ? <ChevronDown size={15} /> : <ChevronRight size={15} /> : <span className="w-[15px]" />}
