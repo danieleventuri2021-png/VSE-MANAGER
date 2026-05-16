@@ -419,6 +419,8 @@ def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), d
             "status": row.match_status,
             "score": row.match_score,
             "mtr": _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None,
+            "reason": _match_reason(_equipment_dict(row), _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None),
+            "differences": analyze_differences(_equipment_dict(row), _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None),
         }
         for row in rows
     ]
@@ -434,6 +436,8 @@ def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), d
             "status": file_mtr.stato or "mtr_orfano",
             "score": None,
             "mtr": _mtr_dict(file_mtr),
+            "reason": "File MTR/CSV senza riga Excel associata",
+            "differences": {"missing_excel": True, "fields": []},
         }
         for file_mtr in orphan_mtrs
     )
@@ -960,6 +964,20 @@ def _anomaly_dict(row: Anomalia) -> dict:
 
 def _mtr_dict(row: FileMtr) -> dict:
     return {field: getattr(row, field) for field in ("id", "path_corrente", "nome_file", "matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "parsed_data", "stato", "source_type", "template_ansur", "is_permanent_three_measure_template", "parsed_json", "measurement_index_json")}
+
+
+def _match_reason(equipment: dict, mtr: dict | None) -> str:
+    if not mtr:
+        return "Nessun file MTR/CSV compatibile trovato"
+    if _same_value(equipment.get("matricola"), mtr.get("matricola")) or _same_value(equipment.get("seriale"), mtr.get("seriale")):
+        return "Matricola/seriale uguale"
+    if _same_value(equipment.get("inventario"), mtr.get("inventario")):
+        return "Inventario uguale"
+    return "Corrispondenza stimata da produttore, modello, descrizione o inventario"
+
+
+def _same_value(left: object, right: object) -> bool:
+    return bool(left and right and re.sub(r"[^a-zA-Z0-9]+", "", str(left)).upper() == re.sub(r"[^a-zA-Z0-9]+", "", str(right)).upper())
 
 
 def _verification_dict(row: VerificaVse) -> dict:

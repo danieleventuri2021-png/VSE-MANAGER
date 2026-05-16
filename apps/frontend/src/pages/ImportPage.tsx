@@ -1,4 +1,4 @@
-import { Archive, FileSpreadsheet, FolderOpen, Play, Upload, Wand2 } from "lucide-react";
+import { Archive, CheckCircle2, FileSpreadsheet, FolderOpen, GitCompare, Play, ShieldAlert, Upload, Wand2 } from "lucide-react";
 import { useState } from "react";
 import { analyzeJob, applyJob, importMtrFolder, uploadExcel, uploadMtrFiles, type Job } from "../api/client";
 import { FolderPicker } from "../components/FolderPicker";
@@ -13,6 +13,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [mtrPickerOpen, setMtrPickerOpen] = useState(false);
+  const [operationSummary, setOperationSummary] = useState<Record<string, any> | null>(null);
 
   function describeError(err: any, fallback: string) {
     return err?.response?.data?.detail || err?.message || fallback;
@@ -25,6 +26,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
     try {
       await uploadExcel(jobId, file);
       setMessage("Excel importato");
+      setOperationSummary(null);
       onDone();
     } catch (err: any) {
       setError(describeError(err, "Import Excel non riuscito."));
@@ -40,6 +42,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
     try {
       await importMtrFolder(jobId, folder);
       setMessage("Cartella MTR/CSV scansionata");
+      setOperationSummary(null);
       onDone();
     } catch (err: any) {
       setError(describeError(err, "Scansione cartella MTR/CSV non riuscita."));
@@ -55,6 +58,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
     try {
       await uploadMtrFiles(jobId, mtrFiles);
       setMessage(`Caricati ${mtrFiles.length} file MTR/CSV/ZIP`);
+      setOperationSummary(null);
       onDone();
     } catch (err: any) {
       setError(describeError(err, "Upload MTR/CSV non riuscito."));
@@ -68,8 +72,9 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
     setBusy(true);
     setError("");
     try {
-      await analyzeJob(jobId);
+      const job = await analyzeJob(jobId);
       setMessage("Analisi completata");
+      setOperationSummary({ type: "analyze", ...job.summary });
       onDone();
     } catch (err: any) {
       setError(describeError(err, "Analisi non riuscita."));
@@ -85,6 +90,7 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
     try {
       const result = await applyJob(jobId);
       setMessage(`Applicazione completata, backup: ${result.backup_dir}`);
+      setOperationSummary({ type: "apply", renamed: result.renamed?.length ?? 0, backup_dir: result.backup_dir });
       onDone();
     } catch (err: any) {
       setError(describeError(err, "Applicazione modifiche non riuscita."));
@@ -134,14 +140,62 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
         </div>
       </Panel>
       <Panel title="Analisi e applicazione">
+        <div className="mb-3 grid gap-2 rounded-md border border-line bg-slate-50 p-3 text-sm text-slate-700">
+          <p><strong>Analizza</strong> confronta le righe Excel con i file MTR/CSV, crea gli abbinamenti e segnala mancanti, orfani e differenze da controllare.</p>
+          <p><strong>Applica modifiche</strong> scrive nei sorgenti MTR/CSV i dati confermati e rinomina i file, creando prima un backup.</p>
+        </div>
         <div className="flex flex-wrap gap-3">
           <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60" onClick={runAnalyze} disabled={busy || !jobId}><Play size={18} /> Analizza</button>
           <button className="inline-flex h-10 items-center gap-2 rounded-md bg-ink px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runApply} disabled={busy || !jobId}><Wand2 size={18} /> Applica modifiche</button>
         </div>
+        {operationSummary && <OperationSummary summary={operationSummary} />}
         {message && <p className="mt-3 text-sm text-action">{message}</p>}
         {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       </Panel>
       {mtrPickerOpen && <FolderPicker initialPath={folder} title="Seleziona cartella MTR/CSV" onSelect={(path) => { setFolder(path); setMtrPickerOpen(false); }} onClose={() => setMtrPickerOpen(false)} />}
     </div>
   );
+}
+
+function OperationSummary({ summary }: { summary: Record<string, any> }) {
+  if (summary.type === "apply") {
+    return (
+      <div className="mt-3 grid gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <div className="flex items-center gap-2 font-medium"><CheckCircle2 size={16} /> Modifiche applicate</div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Metric label="File rinominati" value={summary.renamed ?? 0} />
+          <Metric label="Backup" value={summary.backup_dir || "-"} />
+        </div>
+      </div>
+    );
+  }
+  const items = [
+    { label: "Certi", value: summary.certo ?? 0, icon: CheckCircle2, tone: "text-emerald-700" },
+    { label: "Da controllare", value: summary.da_controllare ?? 0, icon: ShieldAlert, tone: "text-amber-700" },
+    { label: "Mancanti", value: summary.mancante ?? 0, icon: ShieldAlert, tone: "text-rose-700" },
+    { label: "MTR/CSV orfani", value: summary.mtr_orfano ?? 0, icon: Archive, tone: "text-sky-700" },
+    { label: "Differenze", value: summary.differenze ?? 0, icon: GitCompare, tone: "text-slate-700" },
+  ];
+  const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0) || 1;
+  return (
+    <div className="mt-3 rounded-md border border-line bg-white p-3">
+      <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-800"><GitCompare size={16} /> Resoconto analisi</div>
+      <div className="grid gap-2 sm:grid-cols-5">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.label} className="rounded-md border border-line p-2">
+              <div className={`flex items-center gap-1 text-xs ${item.tone}`}><Icon size={14} /> {item.label}</div>
+              <div className="mt-1 text-xl font-semibold text-ink">{item.value}</div>
+              <div className="mt-2 h-1.5 rounded bg-slate-100"><div className="h-1.5 rounded bg-action" style={{ width: `${Math.min(100, (Number(item.value || 0) / total) * 100)}%` }} /></div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string | number }) {
+  return <div className="rounded-md border border-emerald-200 bg-white/70 p-2"><div className="text-xs uppercase text-emerald-700">{label}</div><div className="mt-1 break-all font-medium">{value}</div></div>;
 }
