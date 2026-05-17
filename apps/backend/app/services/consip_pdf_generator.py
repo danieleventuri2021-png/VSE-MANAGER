@@ -130,22 +130,22 @@ class ConsipVsePDF(FPDF):
         self.text(x + 3.1, y, _clean(label))
 
     def _standards_box(self, x: float, y: float, w: float) -> None:
-        self.box(x, y, w, 32)
+        self.box(x, y, w, 33.5)
         third = w / 3
-        self.line(x + third, y, x + third, y + 14)
-        self.line(x + third * 2, y, x + third * 2, y + 14)
-        self.line(x, y + 14, x + w, y + 14)
-        self.multicell_at(x + 2, y + 1, third - 4, 4, "Norme Italiane:\nCEI 62-5; CEI 62-51\nCEI 62-148\nCEI 64-8 V710", size=9)
-        self.multicell_at(x + third + 2, y + 1, third - 4, 4, "Norme Europee:\nEN 60601-1\nEN 62353\nEN 60364-6", size=9)
-        self.multicell_at(x + third * 2 + 2, y + 1, third - 4, 4, "Norme Internazionali:\nIEC 60601-1\nIEC 62353\nIEC 60364-6", size=9)
-        self.cell_at(x + 2, y + 16, w - 4, 4, "Strumenti utilizzati:", style="B", size=10)
+        self.line(x + third, y, x + third, y + 15.7)
+        self.line(x + third * 2, y, x + third * 2, y + 15.7)
+        self.line(x, y + 15.7, x + w, y + 15.7)
+        self.multicell_at(x + 2, y + 0.8, third - 4, 3.5, "Norme Italiane:\nCEI 62-5; CEI 62-51\nCEI 62-148\nCEI 64-8 V710", size=8.1)
+        self.multicell_at(x + third + 2, y + 0.8, third - 4, 3.5, "Norme Europee:\nEN 60601-1\nEN 62353\nEN 60364-6", size=8.1)
+        self.multicell_at(x + third * 2 + 2, y + 0.8, third - 4, 3.5, "Norme Internazionali:\nIEC 60601-1\nIEC 62353\nIEC 60364-6", size=8.1)
+        self.cell_at(x + 2, y + 17.1, w - 4, 4, "Strumenti utilizzati:", style="B", size=10)
         instr = self.data.get("instrument") or {}
         cal = _dmy(instr.get("calibrationDate") or instr.get("calibration_date") or "")
-        self.cell_at(x + 2, y + 24, 54, 4, f"- Analizzatore: {instr.get('manufacturer') or 'FLUKE'}", size=9)
-        self.cell_at(x + 59, y + 24, 38, 4, f"Mod. {instr.get('type') or 'ESA 615'}", size=9)
-        self.cell_at(x + 96, y + 24, 38, 4, f"N. serie. {instr.get('serialNumber') or instr.get('serial_number') or ''}", size=9)
-        self.cell_at(x + 134, y + 24, 30, 4, "Scad.", size=9)
-        self.cell_at(x + 136, y + 29, 28, 4, cal, style="B", size=8, align="C")
+        self.cell_at(x + 2, y + 25, 54, 4, f"- Analizzatore: {instr.get('manufacturer') or 'FLUKE'}", size=9)
+        self.cell_at(x + 59, y + 25, 38, 4, f"Mod. {instr.get('type') or 'ESA 615'}", size=9)
+        self.cell_at(x + 96, y + 25, 38, 4, f"N. serie. {instr.get('serialNumber') or instr.get('serial_number') or ''}", size=9)
+        self.cell_at(x + 134, y + 25, 30, 4, "Scad.", size=9)
+        self.cell_at(x + 136, y + 30, 28, 4, cal, style="B", size=8, align="C")
 
     def _section_anagrafica(self, x: float, y: float, w: float) -> None:
         self.box(x, y, w, 27)
@@ -154,21 +154,22 @@ class ConsipVsePDF(FPDF):
         rows = [5, 10, 15, 23]
         for yy in rows:
             self.line(x, y + yy, x + w, y + yy)
-        self.line(x + 113, y + 5, x + 113, y + 23)
+        self.line(x + 113, y + 5, x + 113, y + 15)
         self.line(x + 57, y + 10, x + 57, y + 15)
         self.cell_at(x + 2, y + 6, 108, 4, f"N. Progressivo di Installazione: {self.ed.get('invGest', '')}", size=8.8)
         self.cell_at(x + 115, y + 6, 52, 4, f"Tipologia: {self.ed.get('tipologia', '')}", style="B", size=8.8)
         self.cell_at(x + 2, y + 11, 53, 4, f"Produttore: {self.ed.get('manufacturer', '')}", size=8.8)
         self.cell_at(x + 59, y + 11, 52, 4, f"Modello: {self.ed.get('model', '')}", size=8.8)
         self.cell_at(x + 115, y + 11, 52, 4, f"N. di Serie: {self.ed.get('serial', '')}", size=8.8)
-        self.cell_at(x + 2, y + 16, 82, 4, f"Cliente: {self.ed.get('proprieta', '')}", size=8.8)
-        self.multicell_at(x + 86, y + 16, 80, 4, f"Presidio: {self.ed.get('presidio', '')}", size=8.8)
-        self.cell_at(x + 2, y + 24, 82, 3, f"Unita Operativa: {self.ed.get('reparto', '')}", size=8.8)
-        self.cell_at(x + 86, y + 24, 80, 3, f"Locale: {self.ed.get('stanza', '')}", size=8.8)
+        self.line(x + 70, y + 15, x + 70, y + 27)
+        self.cell_at(x + 2, y + 16, 66, 4, f"Cliente: {self.ed.get('proprieta', '')}", size=8.8)
+        self.multicell_at(x + 72, y + 16, 95, 4, f"Presidio: {self.ed.get('presidio', '')}", size=8.4)
+        self.cell_at(x + 2, y + 24, 66, 3, f"Unita Operativa: {self.ed.get('reparto', '')}", size=8.8)
+        self.cell_at(x + 72, y + 24, 95, 3, f"Locale: {self.ed.get('stanza', '')}", size=8.8)
 
     def _section_dati_tecnici(self, x: float, y: float, w: float) -> None:
-        self.box(x, y, w, 16)
-        for yy in (5, 9.5, 13):
+        self.box(x, y, w, 18)
+        for yy in (5, 9.7, 13.8):
             self.line(x, y + yy, x + w, y + yy)
         self.cell_at(x + 2, y + 1, w - 4, 4, "Dati Tecnici", style="B", size=10)
         self.cell_at(x + 2, y + 6, 52, 3.5, f"Alimentazione [V]: {self.ed.get('tensione', '')} V", size=8.5)
@@ -182,10 +183,10 @@ class ConsipVsePDF(FPDF):
             self.checkbox(x + 34 + idx * 18, y + 12.6, label, (self.ed.get("apType") or "") == label, size=8.5)
         self.cell_at(x + 112, y + 10, 52, 3, f"Frequenze Prove [mesi]: {self.ed.get('periodicita', '')}", size=8.5)
         install = self.ed.get("installazione", "")
-        self.cell_at(x + 2, y + 13.5, 42, 3, "Tipo di Installazione:", size=8.5)
-        self.checkbox(x + 44, y + 16.0, "fissa", install == "Permanente", size=8.5)
-        self.checkbox(x + 87, y + 16.0, "cavo separabile", True, size=8.5)
-        self.checkbox(x + 130, y + 16.0, "cavo non separabile", False, size=8.5)
+        self.cell_at(x + 2, y + 14.2, 42, 3, "Tipo di Installazione:", size=8.5)
+        self.checkbox(x + 44, y + 16.9, "fissa", install == "Permanente", size=8.5)
+        self.checkbox(x + 87, y + 16.9, "cavo separabile", True, size=8.5)
+        self.checkbox(x + 130, y + 16.9, "cavo non separabile", False, size=8.5)
 
     def _section_condizioni(self, x: float, y: float, w: float) -> None:
         h = 35.7
@@ -193,7 +194,8 @@ class ConsipVsePDF(FPDF):
         for yy in (4.8, 8.4, 12.2, 17.0, 23.7, 30.3):
             self.line(x, y + yy, x + w, y + yy)
         for xx in (47.2, 62.4, 76.5, 120.5, 144.6, 157.4):
-            self.line(x + xx, y + 4.8, x + xx, y + h)
+            self.line(x + xx, y + 4.8, x + xx, y + 8.4)
+            self.line(x + xx, y + 17.0, x + xx, y + h)
         self.cell_at(x + 2, y + 0.8, w - 4, 3.4, "Condizioni di Prova", style="B", size=9)
         self.cell_at(x + 2, y + 5.0, 46, 3.2, "Valori di Prima misura?", size=8)
         self.checkbox(x + 52, y + 7.6, "SI", True, size=8)
@@ -239,20 +241,21 @@ class ConsipVsePDF(FPDF):
         self.line(x, y + 4.8, x + w, y + 4.8)
         self.line(x, y + 9.4, x + w, y + 9.4)
         self.line(x + 54.9, y + 4.8, x + 54.9, y + h)
-        self.line(x + 129.9, y + 4.8, x + 129.9, y + h)
+        self.line(x + 139.5, y + 4.8, x + 139.5, y + h)
         self.cell_at(x + 2, y + 0.8, w - 4, 3.5, "Controllo Visivo Iniziale", style="B", size=9)
         self.cell_at(x + 13, y + 5.4, 40, 3.5, "Voci di controllo:", style="B", size=8)
-        self.cell_at(x + 84, y + 5.4, 35, 3.5, "Risultato", style="B", size=8)
-        self.cell_at(x + 132, y + 5.4, 30, 3.5, "Note", style="B", size=8)
+        self.cell_at(x + 89, y + 5.4, 35, 3.5, "Risultato", style="B", size=8)
+        self.cell_at(x + 142, y + 5.4, 25, 3.5, "Note", style="B", size=8)
         yy = y + 9.4
         for label, key in labels:
             self.line(x, yy, x + w, yy)
-            self.multicell_at(x + 1.5, yy + 0.7, 52, 3.0, label, size=7.4)
+            one_line_label = label.replace("\n", " ")
+            self.cell_at(x + 1.5, yy + 0.8, 52, 3.0, one_line_label, size=7.2 if "Serigrafie" in one_line_label else 7.4)
             val = (self.ed.get(key) or "OK").upper()
-            self.checkbox(x + 58, yy + 3.6, "ok", val == "OK", size=7.4)
-            self.checkbox(x + 75, yy + 3.6, "non ok", val == "KO", size=7.4)
-            self.checkbox(x + 100, yy + 3.6, "non verificabile", val == "NV", size=7.4)
-            self.checkbox(x + 122, yy + 3.6, "non applicabile", val == "NA", size=7.4)
+            self.checkbox(x + 57.2, yy + 3.6, "ok", val == "OK", size=7.0)
+            self.checkbox(x + 71.0, yy + 3.6, "non ok", val == "KO", size=7.0)
+            self.checkbox(x + 91.0, yy + 3.6, "non verificabile", val == "NV", size=7.0)
+            self.checkbox(x + 119.5, yy + 3.6, "non applicabile", val == "NA", size=7.0)
             yy += row_h
 
     def _instrumental_tests(self, x: float, y: float, w: float) -> None:
