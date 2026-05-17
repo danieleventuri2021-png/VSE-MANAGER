@@ -69,7 +69,7 @@ class ConsipVsePDF(FPDF):
     def _header(self) -> float:
         img = self.header_image or _find_default_header()
         if img and Path(img).exists():
-            self.image(img, x=22, y=15, w=166)
+            self.image(img, x=20.1, y=12.5, w=169.8)
         else:
             self.set_font(self._font, "B", 18)
             self.text(25, 27, "Meditech")
@@ -85,8 +85,8 @@ class ConsipVsePDF(FPDF):
         x = 20.2
         w = 169.8
         self.set_font(self._font, "", 16)
-        self.cell_at(x, 43.0, w, 7, "MODELLO VERIFICA SICUREZZA ELETTRICA", align="C", size=16)
-        self.cell_at(x, 59.0, w, 7, _lotto_title(self.ed), align="C", size=16)
+        self.cell_at(x, 43.5, w, 7, "MODELLO VERIFICA SICUREZZA ELETTRICA", align="C", size=16)
+        self.cell_at(x, 62.5, w, 7, _lotto_title(self.ed), align="C", size=16)
 
         self._standards_box(x, 71.5, w)
         self._section_anagrafica(x, 109.0, w)
@@ -188,35 +188,36 @@ class ConsipVsePDF(FPDF):
         self.checkbox(x + 130, y + 16.0, "cavo non separabile", False, size=8.5)
 
     def _section_condizioni(self, x: float, y: float, w: float) -> None:
-        h = 27.9
+        h = 35.7
         self.box(x, y, w, h)
-        for yy in (3.8, 7.6, 14.8, 21.4):
+        for yy in (4.8, 8.4, 12.2, 17.0, 23.7, 30.3):
             self.line(x, y + yy, x + w, y + yy)
-        for xx in (51.0, 76.5, 120.5, 144.6, 157.4):
-            self.line(x + xx, y + 3.8, x + xx, y + h)
-        self.cell_at(x + 2, y + 0.4, w - 4, 3.4, "Condizioni di Prova", style="B", size=9)
-        self.cell_at(x + 2, y + 4.2, 48, 3.2, "Valori di Prima misura?", size=8)
-        self.checkbox(x + 52, y + 6.8, "SI", True, size=8)
-        self.checkbox(x + 65, y + 6.8, "NO", False, size=8)
-        self.cell_at(x + 78, y + 4.2, 42, 3.2, "Norma di Riferimento:", size=8)
-        self.checkbox(x + 122, y + 6.8, "62-5", False, size=8)
-        self.checkbox(x + 148, y + 6.8, "62-148", True, size=8)
-        self.cell_at(x + 78, y + 8.2, 86, 3.2, "Se 62-148, metodo di misura utilizzato:", size=8)
-        self.checkbox(x + 86, y + 13.4, "Differenziale", False, size=8)
-        self.checkbox(x + 121, y + 13.4, "Alternativo", False, size=8)
-        self.checkbox(x + 156, y + 13.4, "Diretto", True, size=8)
-        self.multicell_at(x + 2, y + 15.0, 48, 3.0, "Presenti fase di boot /\ncalibrazione motore?", size=7.4)
-        self.checkbox(x + 53, y + 19.3, "SI", False, size=8)
-        self.checkbox(x + 66, y + 19.3, "NO", True, size=8)
-        self.cell_at(x + 78, y + 16.3, 66, 3.2, "Presenti cavi di terra supplementari?", size=8)
-        self.checkbox(x + 146, y + 19.3, "SI", False, size=8)
-        self.checkbox(x + 158, y + 19.3, "NO", True, size=8)
-        self.multicell_at(x + 2, y + 21.7, 48, 3.0, "Connessione diretta con nodo\ndel locale?", size=7.4)
-        self.checkbox(x + 53, y + 26.0, "SI", False, size=8)
-        self.checkbox(x + 66, y + 26.0, "NO", True, size=8)
-        self.cell_at(x + 78, y + 22.9, 66, 3.2, "Presente trasformatore isolamento?", size=8)
-        self.checkbox(x + 146, y + 26.0, "SI", False, size=8)
-        self.checkbox(x + 158, y + 26.0, "NO", True, size=8)
+        for xx in (47.2, 62.4, 76.5, 120.5, 144.6, 157.4):
+            self.line(x + xx, y + 4.8, x + xx, y + h)
+        self.cell_at(x + 2, y + 0.8, w - 4, 3.4, "Condizioni di Prova", style="B", size=9)
+        self.cell_at(x + 2, y + 5.0, 46, 3.2, "Valori di Prima misura?", size=8)
+        self.checkbox(x + 52, y + 7.6, "SI", True, size=8)
+        self.checkbox(x + 66, y + 7.6, "NO", False, size=8)
+        self.cell_at(x + 78, y + 5.0, 42, 3.2, "Norma di Riferimento:", size=8)
+        self.checkbox(x + 125, y + 7.6, "62-5", False, size=8)
+        self.checkbox(x + 151, y + 7.6, "62-148", True, size=8)
+        self.cell_at(x + 78, y + 9.0, 86, 3.0, "Se 62-148, metodo di misura utilizzato:", size=8)
+        self.checkbox(x + 82, y + 15.2, "Differenziale", False, size=8)
+        self.checkbox(x + 116, y + 15.2, "Alternativo", False, size=8)
+        self.checkbox(x + 151, y + 15.2, "Diretto", True, size=8)
+        self.multicell_at(x + 2, y + 17.5, 44, 3.0, "Presenti fase di boot /\ncalibrazione motore?", size=8)
+        self.checkbox(x + 50, y + 22.0, "SI", False, size=8)
+        self.checkbox(x + 63, y + 22.0, "NO", True, size=8)
+        self.cell_at(x + 78, y + 18.8, 66, 3.2, "Presenti cavi di terra supplementari?", size=8)
+        self.checkbox(x + 146, y + 22.0, "SI", False, size=8)
+        self.checkbox(x + 158, y + 22.0, "NO", True, size=8)
+        self.multicell_at(x + 2, y + 24.2, 44, 3.0, "Classe alimentazione di\nsicurezza 64.8:", size=8)
+        self.cell_at(x + 78, y + 25.4, 66, 3.2, "Presente trasformatore isolamento?", size=8)
+        self.checkbox(x + 146, y + 28.6, "SI", False, size=8)
+        self.checkbox(x + 158, y + 28.6, "NO", True, size=8)
+        self.multicell_at(x + 2, y + 30.8, 44, 2.8, "Connessione diretta con nodo\ndel locale?", size=8)
+        self.checkbox(x + 50, y + 35.0, "SI", False, size=8)
+        self.checkbox(x + 63, y + 35.0, "NO", True, size=8)
 
     def _section_visivo(self, x: float, y: float, w: float) -> None:
         row_h = 5.08
@@ -277,9 +278,6 @@ class ConsipVsePDF(FPDF):
             (39.6, 8.6, "Resistenza di Isolamento Rete\n- Involucro [MOhm]", self._measure_value("Mains to Protective Earth"), "", "OK", True),
             (48.2, 8.6, "Resistenza di Isolamento Rete\n- PA [MOhm]", self._measure_value("Mains to Applied Parts"), "", "OK", True),
             (56.8, 8.7, "Resistenza di Isolamento PA -\nInvolucro [MOhm]", self._measure_value("Applied Parts to Non-Earth"), "", "OK", True),
-            (65.5, 34.1, "Correnti di Dispersione\nnell'involucro [microA]", self._enclosure_leakage(), _enclosure_limits_compact(), "OK", False),
-            (99.6, 36.2, "Correnti di Dispersione nel\nPaziente [microA]", self._patient_leakage(), _patient_limits_compact(), "OK", False),
-            (135.8, 14.0, "Corrente di Dispersione Verso\nTerra (Installazioni fisse)\n[microA]", "", _earth_leakage_limits_compact(), "NA", False),
         ]
         for yy, rh, label, measure, limits, outcome, gray_limits in rows:
             self.multicell_at(x + 2, y + yy + max(1.0, rh / 2 - 5), c[0] - 4, 3.2, label, size=7.8)
@@ -292,6 +290,80 @@ class ConsipVsePDF(FPDF):
             self.checkbox(ox, y + yy + rh / 2, "OK", outcome == "OK", size=7.8)
             self.checkbox(ox + 10.5, y + yy + rh / 2, "NOK", outcome == "NOK", size=7.8)
             self.checkbox(ox + 25.0, y + yy + rh / 2, "NA", outcome == "NA", size=7.8)
+        self._enclosure_limits_grid(x, y + 65.5, c)
+        self._patient_limits_grid(x, y + 99.6, c)
+        self._earth_leakage_grid(x, y + 135.8, c)
+
+    def _leakage_common(self, x: float, y: float, c: list[float], label: str, measure: str, outcome: str, height: float) -> tuple[float, float, float]:
+        vx = x + c[0] + c[1]
+        vw = c[2]
+        self.multicell_at(x + 2, y + height / 2 - 6, c[0] - 4, 4.0, label, size=8.2)
+        self.cell_at(x + c[0] + 2, y + height / 2 - 1.8, c[1] - 4, 3.5, measure or "______", size=7.8, align="C")
+        ox = x + c[0] + c[1] + c[2] + 3
+        self.checkbox(ox, y + height / 2, "OK", outcome == "OK", size=7.8)
+        self.checkbox(ox + 10.5, y + height / 2, "NOK", outcome == "NOK", size=7.8)
+        self.checkbox(ox + 25.0, y + height / 2, "NA", outcome == "NA", size=7.8)
+        return vx, vw, y
+
+    def _enclosure_limits_grid(self, x: float, y: float, c: list[float]) -> None:
+        vx, vw, _ = self._leakage_common(x, y, c, "Correnti di Dispersione\nnell'involucro [microA]", self._enclosure_leakage(), "OK", 34.1)
+        label_w, class_w = 20.2, 12.6
+        value_w = (vw - label_w - class_w) / 3
+        for xx in (label_w, label_w + class_w, label_w + class_w + value_w, label_w + class_w + value_w * 2):
+            self.line(vx + xx, y, vx + xx, y + 34.1)
+        for yy in (8.6, 13.2, 17.8, 25.0, 29.6):
+            self.line(vx + label_w, y + yy, vx + vw, y + yy)
+        self.cell_at(vx + 2, y + 10, label_w - 4, 3, "Alternativo", size=7.2)
+        self.cell_at(vx + 2, y + 24, label_w - 4, 3, "Diretto / Diff", style="B", size=7.2)
+        self._limit_triplet(vx + label_w, y + 1.8, class_w, value_w, "I", ("B", "BF", "CF"), ("1000", "1000", "1000"))
+        self._limit_triplet(vx + label_w, y + 10.4, class_w, value_w, "II", ("B", "BF", "CF"), ("500", "500", "500"))
+        self._limit_triplet(vx + label_w, y + 19.6, class_w, value_w, "I", ("B", "BF", "CF"), ("500", "500", "500"), underline_last=True)
+        self._limit_triplet(vx + label_w, y + 27.0, class_w, value_w, "II", ("B", "BF", "CF"), ("100", "100", "100"))
+
+    def _patient_limits_grid(self, x: float, y: float, c: list[float]) -> None:
+        vx, vw, _ = self._leakage_common(x, y, c, "Correnti di Dispersione nel\nPaziente [microA]", self._patient_leakage(), "OK", 36.2)
+        label_w, class_w = 20.2, 12.6
+        value_w = (vw - label_w - class_w) / 3
+        self.box(vx + label_w + class_w, y, value_w, 36.2, fill_gray=True)
+        for xx in (label_w, label_w + class_w, label_w + class_w + value_w, label_w + class_w + value_w * 2):
+            self.line(vx + xx, y, vx + xx, y + 36.2)
+        for yy in (9.0, 14.0, 19.0, 27.0, 31.6):
+            self.line(vx + label_w, y + yy, vx + vw, y + yy)
+        self.cell_at(vx + 2, y + 10, label_w - 4, 3, "Alternativo", size=7.2)
+        self.cell_at(vx + 2, y + 25, label_w - 4, 3, "Diretto / Diff", style="B", size=7.2)
+        self._limit_triplet(vx + label_w, y + 2.2, class_w, value_w, "I", ("", "BF", "CF"), ("", "5000", "50"))
+        self._limit_triplet(vx + label_w, y + 11.2, class_w, value_w, "II", ("", "BF", "CF"), ("", "5000", "50"))
+        self._limit_triplet(vx + label_w, y + 21.2, class_w, value_w, "I", ("", "BF", "CF"), ("", "5000", "50"), underline_last=True)
+        self._limit_triplet(vx + label_w, y + 28.6, class_w, value_w, "II", ("", "BF", "CF"), ("", "5000", "50"))
+
+    def _earth_leakage_grid(self, x: float, y: float, c: list[float]) -> None:
+        vx = x + c[0] + c[1]
+        vw = c[2]
+        self.multicell_at(x + 2, y + 1.5, c[0] - 4, 4, "Corrente di Dispersione Verso\nTerra (Installazioni fisse)\n[microA]", size=8.2)
+        self.cell_at(x + c[0] + 2, y + 2, c[1] - 4, 3.5, "nc/sfc", size=8, align="C")
+        self.cell_at(x + c[0] + 4, y + 10.5, c[1] - 8, 3.5, "___/___", size=8, align="C")
+        ox = x + c[0] + c[1] + c[2] + 3
+        self.checkbox(ox, y + 8, "OK", False, size=7.8)
+        self.checkbox(ox + 10.5, y + 8, "NOK", False, size=7.8)
+        self.checkbox(ox + 25.0, y + 8, "NA", True, size=7.8)
+        group = vw / 3
+        for xx in (group, group * 2, group / 2, group + group / 2, group * 2 + group / 2):
+            self.line(vx + xx, y, vx + xx, y + 14)
+        for yy in (4.6, 9.2):
+            self.line(vx, y + yy, vx + vw, y + yy)
+        for i, label in enumerate(("B", "BF", "CF")):
+            self.cell_at(vx + i * group, y + 0.5, group, 3.5, label, size=8, align="C")
+            self.cell_at(vx + i * group, y + 5, group / 2, 3.5, "nc", size=7.5, align="C")
+            self.cell_at(vx + i * group + group / 2, y + 5, group / 2, 3.5, "sfc", size=7.5, align="C")
+            self.cell_at(vx + i * group, y + 9.8, group / 2, 3.5, "5000", size=7.5, align="C")
+            self.cell_at(vx + i * group + group / 2, y + 9.8, group / 2, 3.5, "10000", size=7.5, align="C")
+
+    def _limit_triplet(self, x: float, y: float, class_w: float, value_w: float, class_label: str, headers: tuple[str, str, str], values: tuple[str, str, str], underline_last: bool = False) -> None:
+        self.cell_at(x, y + 1.0, class_w, 3, class_label, size=8, align="C")
+        for idx, header in enumerate(headers):
+            style = "B" if underline_last and idx == 2 else ""
+            self.cell_at(x + class_w + idx * value_w, y, value_w, 3, header, style=style, size=8, align="C")
+            self.cell_at(x + class_w + idx * value_w, y + 3.8, value_w, 3, values[idx], size=8, align="C")
 
     def _function_row(self, x: float, y: float, w: float) -> None:
         self.box(x, y, w, 6, fill_gray=True)
