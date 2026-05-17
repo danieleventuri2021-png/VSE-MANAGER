@@ -355,11 +355,11 @@ class ConsipVsePDF(FPDF):
         for yy in (4.6, 9.2):
             self.line(vx, y + yy, vx + vw, y + yy)
         for i, label in enumerate(("B", "BF", "CF")):
-            self.cell_at(vx + i * group, y + 0.7, group, 3.0, label, size=7.2, align="C")
-            self.cell_at(vx + i * group, y + 5.1, group / 2, 3.0, "nc", size=6.8, align="C")
-            self.cell_at(vx + i * group + group / 2, y + 5.1, group / 2, 3.0, "sfc", size=6.8, align="C")
-            self.cell_at(vx + i * group, y + 10.0, group / 2, 3.0, "5000", size=6.8, align="C")
-            self.cell_at(vx + i * group + group / 2, y + 10.0, group / 2, 3.0, "10000", size=6.8, align="C")
+            self.cell_at(vx + i * group, y + 1.35, group, 3.0, label, size=6.4, align="C")
+            self.cell_at(vx + i * group, y + 5.55, group / 2, 3.0, "nc", size=6.4, align="C")
+            self.cell_at(vx + i * group + group / 2, y + 5.55, group / 2, 3.0, "sfc", size=6.4, align="C")
+            self.cell_at(vx + i * group, y + 10.2, group / 2, 3.0, "5000", size=6.4, align="C")
+            self.cell_at(vx + i * group + group / 2, y + 10.2, group / 2, 3.0, "10000", size=6.4, align="C")
 
     def _limit_triplet(self, x: float, y: float, class_w: float, value_w: float, class_label: str, headers: tuple[str, str, str], values: tuple[str, str, str], underline_last: bool = False) -> None:
         self.cell_at(x, y + 2.1, class_w, 3, class_label, size=7.2, align="C")
