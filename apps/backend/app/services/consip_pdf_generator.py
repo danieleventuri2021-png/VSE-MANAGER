@@ -351,7 +351,7 @@ class ConsipVsePDF(FPDF):
         self.checkbox(ox + 25.0, y + 8, "NA", True, size=7.8)
         group = vw / 3
         for xx in (group, group * 2, group / 2, group + group / 2, group * 2 + group / 2):
-            self.line(vx + xx, y, vx + xx, y + 14)
+            self.line(vx + xx, y + 4.6, vx + xx, y + 14)
         for yy in (4.6, 9.2):
             self.line(vx, y + yy, vx + vw, y + yy)
         for i, label in enumerate(("B", "BF", "CF")):
