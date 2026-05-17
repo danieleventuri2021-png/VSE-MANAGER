@@ -376,7 +376,7 @@ class ConsipVsePDF(FPDF):
         self.checkbox(x + 154, y + 4, "NA", self.ed.get("funz_accensione") == "NA", size=9)
 
     def _final_section(self, x: float, y: float, w: float) -> None:
-        h = 56
+        h = 69
         self.box(x, y, w, h)
         self.line(x + 47, y, x + 47, y + h)
         self.line(x + 108, y + 42, x + 108, y + h)
