@@ -314,14 +314,14 @@ class ConsipVsePDF(FPDF):
         value_w = (vw - label_w - class_w) / 3
         for xx in (label_w, label_w + class_w, label_w + class_w + value_w, label_w + class_w + value_w * 2):
             self.line(vx + xx, y, vx + xx, y + 34.1)
-        for yy in (8.6, 13.2, 17.8, 25.0, 29.6):
+        for yy in (8.5, 17.05, 25.55):
             self.line(vx + label_w, y + yy, vx + vw, y + yy)
-        self.cell_at(vx + 2, y + 10, label_w - 4, 3, "Alternativo", size=7.2)
-        self.cell_at(vx + 2, y + 24, label_w - 4, 3, "Diretto / Diff", style="B", size=7.2)
-        self._limit_triplet(vx + label_w, y + 1.8, class_w, value_w, "I", ("B", "BF", "CF"), ("1000", "1000", "1000"))
-        self._limit_triplet(vx + label_w, y + 10.4, class_w, value_w, "II", ("B", "BF", "CF"), ("500", "500", "500"))
-        self._limit_triplet(vx + label_w, y + 19.6, class_w, value_w, "I", ("B", "BF", "CF"), ("500", "500", "500"), underline_last=True)
-        self._limit_triplet(vx + label_w, y + 27.0, class_w, value_w, "II", ("B", "BF", "CF"), ("100", "100", "100"))
+        self.cell_at(vx + 2, y + 7.0, label_w - 4, 3, "Alternativo", size=6.8)
+        self.cell_at(vx + 2, y + 23.8, label_w - 4, 3, "Diretto / Diff", style="B", size=6.8)
+        self._limit_triplet(vx + label_w, y + 0.3, class_w, value_w, "I", ("B", "BF", "CF"), ("1000", "1000", "1000"))
+        self._limit_triplet(vx + label_w, y + 8.85, class_w, value_w, "II", ("B", "BF", "CF"), ("500", "500", "500"))
+        self._limit_triplet(vx + label_w, y + 17.4, class_w, value_w, "I", ("B", "BF", "CF"), ("500", "500", "500"), underline_last=True)
+        self._limit_triplet(vx + label_w, y + 25.9, class_w, value_w, "II", ("B", "BF", "CF"), ("100", "100", "100"))
 
     def _patient_limits_grid(self, x: float, y: float, c: list[float]) -> None:
         vx, vw, _ = self._leakage_common(x, y, c, "Correnti di Dispersione nel\nPaziente [microA]", self._patient_leakage(), "OK", 36.2)
@@ -330,14 +330,14 @@ class ConsipVsePDF(FPDF):
         self.box(vx + label_w + class_w, y, value_w, 36.2, fill_gray=True)
         for xx in (label_w, label_w + class_w, label_w + class_w + value_w, label_w + class_w + value_w * 2):
             self.line(vx + xx, y, vx + xx, y + 36.2)
-        for yy in (9.0, 14.0, 19.0, 27.0, 31.6):
+        for yy in (9.05, 18.1, 27.15):
             self.line(vx + label_w, y + yy, vx + vw, y + yy)
-        self.cell_at(vx + 2, y + 10, label_w - 4, 3, "Alternativo", size=7.2)
-        self.cell_at(vx + 2, y + 25, label_w - 4, 3, "Diretto / Diff", style="B", size=7.2)
-        self._limit_triplet(vx + label_w, y + 2.2, class_w, value_w, "I", ("", "BF", "CF"), ("", "5000", "50"))
-        self._limit_triplet(vx + label_w, y + 11.2, class_w, value_w, "II", ("", "BF", "CF"), ("", "5000", "50"))
-        self._limit_triplet(vx + label_w, y + 21.2, class_w, value_w, "I", ("", "BF", "CF"), ("", "5000", "50"), underline_last=True)
-        self._limit_triplet(vx + label_w, y + 28.6, class_w, value_w, "II", ("", "BF", "CF"), ("", "5000", "50"))
+        self.cell_at(vx + 2, y + 7.3, label_w - 4, 3, "Alternativo", size=6.8)
+        self.cell_at(vx + 2, y + 25.2, label_w - 4, 3, "Diretto / Diff", style="B", size=6.8)
+        self._limit_triplet(vx + label_w, y + 0.8, class_w, value_w, "I", ("", "BF", "CF"), ("", "5000", "50"))
+        self._limit_triplet(vx + label_w, y + 9.85, class_w, value_w, "II", ("", "BF", "CF"), ("", "5000", "50"))
+        self._limit_triplet(vx + label_w, y + 18.9, class_w, value_w, "I", ("", "BF", "CF"), ("", "5000", "50"), underline_last=True)
+        self._limit_triplet(vx + label_w, y + 27.6, class_w, value_w, "II", ("", "BF", "CF"), ("", "5000", "50"))
 
     def _earth_leakage_grid(self, x: float, y: float, c: list[float]) -> None:
         vx = x + c[0] + c[1]
@@ -355,18 +355,18 @@ class ConsipVsePDF(FPDF):
         for yy in (4.6, 9.2):
             self.line(vx, y + yy, vx + vw, y + yy)
         for i, label in enumerate(("B", "BF", "CF")):
-            self.cell_at(vx + i * group, y + 0.5, group, 3.5, label, size=8, align="C")
-            self.cell_at(vx + i * group, y + 5, group / 2, 3.5, "nc", size=7.5, align="C")
-            self.cell_at(vx + i * group + group / 2, y + 5, group / 2, 3.5, "sfc", size=7.5, align="C")
-            self.cell_at(vx + i * group, y + 9.8, group / 2, 3.5, "5000", size=7.5, align="C")
-            self.cell_at(vx + i * group + group / 2, y + 9.8, group / 2, 3.5, "10000", size=7.5, align="C")
+            self.cell_at(vx + i * group, y + 0.7, group, 3.0, label, size=7.2, align="C")
+            self.cell_at(vx + i * group, y + 5.1, group / 2, 3.0, "nc", size=6.8, align="C")
+            self.cell_at(vx + i * group + group / 2, y + 5.1, group / 2, 3.0, "sfc", size=6.8, align="C")
+            self.cell_at(vx + i * group, y + 10.0, group / 2, 3.0, "5000", size=6.8, align="C")
+            self.cell_at(vx + i * group + group / 2, y + 10.0, group / 2, 3.0, "10000", size=6.8, align="C")
 
     def _limit_triplet(self, x: float, y: float, class_w: float, value_w: float, class_label: str, headers: tuple[str, str, str], values: tuple[str, str, str], underline_last: bool = False) -> None:
-        self.cell_at(x, y + 1.0, class_w, 3, class_label, size=8, align="C")
+        self.cell_at(x, y + 2.1, class_w, 3, class_label, size=7.2, align="C")
         for idx, header in enumerate(headers):
             style = "B" if underline_last and idx == 2 else ""
-            self.cell_at(x + class_w + idx * value_w, y, value_w, 3, header, style=style, size=8, align="C")
-            self.cell_at(x + class_w + idx * value_w, y + 3.8, value_w, 3, values[idx], size=8, align="C")
+            self.cell_at(x + class_w + idx * value_w, y + 0.2, value_w, 3, header, style=style, size=7.2, align="C")
+            self.cell_at(x + class_w + idx * value_w, y + 4.2, value_w, 3, values[idx], size=7.2, align="C")
 
     def _function_row(self, x: float, y: float, w: float) -> None:
         self.box(x, y, w, 6, fill_gray=True)
