@@ -9,6 +9,7 @@ from app.services.esa615_legacy_adapter import (
     generate_pdf_legacy,
     sanitize_filename_legacy,
 )
+from app.services.consip_pdf_generator import generate_consip_pdf
 
 
 def build_pdf_filename(data: dict) -> str:
@@ -27,8 +28,19 @@ def generate_vse_pdf(data: dict, output_dir: str | Path, template_pdf: str = "st
     legacy_edited = _pdf_ready_edited(apply_template_defaults_legacy(legacy_data, to_legacy_edited(data)))
     filename = build_pdf_filename({**data, **legacy_edited})
     path = output / filename
-    generate_pdf_legacy(legacy_data, legacy_edited, path, header_image=header_image)
-    return {"path": str(path), "filename": filename, "template_pdf": template_pdf}
+    normalized_template = _normalize_template_pdf(template_pdf)
+    if normalized_template == "consip":
+        generate_consip_pdf(legacy_data, legacy_edited, path, header_image=header_image)
+    else:
+        generate_pdf_legacy(legacy_data, legacy_edited, path, header_image=header_image)
+    return {"path": str(path), "filename": filename, "template_pdf": normalized_template}
+
+
+def _normalize_template_pdf(template_pdf: str | None) -> str:
+    text = str(template_pdf or "standard").strip().lower()
+    if text in {"consip", "modello consip"}:
+        return "consip"
+    return "standard" if text in {"", "standard", "generico", "modello generico"} else str(template_pdf or "standard")
 
 
 def to_legacy_data(data: dict) -> dict:

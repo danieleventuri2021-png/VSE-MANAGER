@@ -217,6 +217,38 @@ def test_pdf_filename_and_generation_without_header():
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 
+def test_consip_pdf_generation_uses_consip_template():
+    tmp_path = workdir()
+    generated = generate_vse_pdf(
+        {
+            "tipologia": "ELETTROCARDIOGRAFO",
+            "matricola": "SN1",
+            "produttore": "ZONCARE",
+            "modello": "iMAC 120pro",
+            "proprieta": "ASL ROMA 2",
+            "presidio": "CDC",
+            "reparto": "CARDIOLOGIA",
+            "stanza": "AMB",
+        },
+        tmp_path,
+        template_pdf="consip",
+    )
+    assert generated["template_pdf"] == "consip"
+    assert Path(generated["path"]).exists()
+    assert Path(generated["path"]).read_bytes().startswith(b"%PDF")
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_consip_lotto_title_rules():
+    from app.services.consip_pdf_generator import _lotto_title
+
+    assert _lotto_title({"tipologia": "DERMATOSCOPIO", "model": "DE-4100"}) == "LOTTO 1: APPARECCHIATURA: DERMATOSCOPIO"
+    assert _lotto_title({"tipologia": "ELETTROCARDIOGRAFO", "model": "iMAC 12pro"}) == "LOTTO 3: APPARECCHIATURA: ECG EMERGENZE"
+    assert _lotto_title({"tipologia": "ELETTROCARDIOGRAFO", "model": "iMAC 120pro"}) == "LOTTO 2: APPARECCHIATURA: ECG 12 DERIVAZIONI"
+    assert _lotto_title({"tipologia": "SPIROMETRO", "model": "X2A"}) == "LOTTO 5: APPARECCHIATURA: SPIROMETRO"
+    assert _lotto_title({"tipologia": "MONITOR", "model": "M1"}) == "APPARECCHIATURA: MONITOR"
+
+
 def test_source_writer_updates_safe_xml_fields_and_not_measurements():
     tmp_path = workdir()
     source = tmp_path / "source.mtr"

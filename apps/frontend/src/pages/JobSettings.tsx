@@ -4,7 +4,20 @@ import { saveJobSettings, uploadJobAsset, type Job } from "../api/client";
 import { Panel } from "../components/Panel";
 
 const fields = ["tecnico", "firma_path", "proprieta", "periodicita", "tensione", "frequenza", "protezione", "template_pdf", "intestazione_pdf"];
+const fieldLabels: Record<string, string> = {
+  tecnico: "Tecnico",
+  firma_path: "Firma",
+  proprieta: "Proprieta",
+  periodicita: "Periodicita",
+  tensione: "Tensione",
+  frequenza: "Frequenza",
+  protezione: "Protezione",
+  template_pdf: "Modello PDF",
+  intestazione_pdf: "Intestazione PDF",
+};
 const periodicitaOptions = [{ value: "12 mesi", label: "12 mesi" }, { value: "24 mesi", label: "24 mesi" }];
+const pdfTemplateOptions = [{ value: "standard", label: "Modello generico" }, { value: "consip", label: "Modello CONSIP" }];
+const headerOptions = [{ value: "standard", label: "Generica" }, { value: "consip", label: "CONSIP" }];
 const protezioneOptions = [
   { value: "Magnetotermico", label: "Magnetotermico" },
   { value: "Magnetotermico Differenziale", label: "Magnetotermico Differenziale" },
@@ -77,7 +90,7 @@ export function JobSettings({ jobs, onDone }: { jobs: Job[]; onDone: () => void 
 function FieldControl({ field, value, uploading, onChange, onFile }: { field: string; value: string; uploading: boolean; onChange: (value: string) => void; onFile: (file: File | null) => void }) {
   return (
     <label className="grid gap-1 text-xs font-medium uppercase text-slate-500">
-      {field.replaceAll("_", " ")}
+      {fieldLabels[field] || field.replaceAll("_", " ")}
       {field === "periodicita" ? (
         <select className="h-10 rounded-md border border-line px-3 text-sm normal-case text-ink" value={value || "12 mesi"} onChange={(event) => onChange(event.target.value)}>
           {periodicitaOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -85,6 +98,14 @@ function FieldControl({ field, value, uploading, onChange, onFile }: { field: st
       ) : field === "protezione" ? (
         <select className="h-10 rounded-md border border-line px-3 text-sm normal-case text-ink" value={value || "Trasformatore di isolamento"} onChange={(event) => onChange(event.target.value)}>
           {protezioneOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      ) : field === "template_pdf" ? (
+        <select className="h-10 rounded-md border border-line px-3 text-sm normal-case text-ink" value={normalizePdfTemplate(value)} onChange={(event) => onChange(event.target.value)}>
+          {pdfTemplateOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      ) : field === "intestazione_pdf" ? (
+        <select className="h-10 rounded-md border border-line px-3 text-sm normal-case text-ink" value={normalizeHeader(value)} onChange={(event) => onChange(event.target.value)}>
+          {headerOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
       ) : isFileField(field) ? (
         <div className="flex gap-2">
@@ -109,10 +130,20 @@ function normalizePeriodicity(value?: string | null) {
 }
 
 function isFileField(field: string): field is "firma_path" | "template_pdf" | "intestazione_pdf" {
-  return field === "firma_path" || field === "template_pdf" || field === "intestazione_pdf";
+  return field === "firma_path";
 }
 
 function acceptFor(field: string) {
   if (field === "template_pdf") return ".pdf,application/pdf";
   return ".png,.jpg,.jpeg,image/png,image/jpeg";
+}
+
+function normalizePdfTemplate(value?: string | null) {
+  const text = String(value || "").trim().toLowerCase();
+  return text === "consip" || text === "modello consip" ? "consip" : "standard";
+}
+
+function normalizeHeader(value?: string | null) {
+  const text = String(value || "").trim().toLowerCase();
+  return text === "consip" ? "consip" : "standard";
 }

@@ -121,7 +121,8 @@ def _verification_for_file(db: Session, file_mtr: FileMtr) -> VerificaVse | None
 
 def _header_path(job: LavoroVse) -> str | None:
     root = Path(__file__).resolve().parents[4]
-    name = "intestazione-consip-vse.png" if (job.intestazione_pdf or "").lower() == "consip" else "meditech-vse.png"
+    use_consip_header = (job.intestazione_pdf or "").lower() == "consip" or (job.template_pdf or "").lower() == "consip"
+    name = "intestazione-consip-vse.png" if use_consip_header else "meditech-vse.png"
     custom = (job.intestazione_pdf or "").strip()
     if custom and custom.lower() not in {"standard", "consip"} and Path(custom).exists():
         return custom
