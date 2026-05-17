@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -140,7 +141,7 @@ class ConsipVsePDF(FPDF):
         self.multicell_at(x + third * 2 + 2, y + 0.8, third - 4, 3.5, "Norme Internazionali:\nIEC 60601-1\nIEC 62353\nIEC 60364-6", size=8.1)
         self.cell_at(x + 2, y + 17.1, w - 4, 4, "Strumenti utilizzati:", style="B", size=10)
         instr = self.data.get("instrument") or {}
-        cal = _dmy(instr.get("calibrationDate") or instr.get("calibration_date") or "")
+        cal = _calibration_expiry_dmy(instr.get("calibrationDate") or instr.get("calibration_date") or "")
         self.cell_at(x + 2, y + 25, 54, 4, f"- Analizzatore: {instr.get('manufacturer') or 'FLUKE'}", size=9)
         self.cell_at(x + 59, y + 25, 38, 4, f"Mod. {instr.get('type') or 'ESA 615'}", size=9)
         self.cell_at(x + 96, y + 25, 38, 4, f"N. serie. {instr.get('serialNumber') or instr.get('serial_number') or ''}", size=9)
@@ -463,6 +464,37 @@ def _dmy(value: object) -> str:
     if match and int(match.group(1)) <= 12:
         return f"{match.group(2)} / {match.group(1)} / {match.group(3)}"
     return text.replace("/", " / ")
+
+
+def _calibration_expiry_dmy(value: object) -> str:
+    parsed = _parse_calibration_date(value)
+    if not parsed:
+        return _dmy(value)
+    try:
+        expiry = parsed.replace(year=parsed.year + 1)
+    except ValueError:
+        expiry = parsed.replace(year=parsed.year + 1, day=28)
+    return f"{expiry.day:02d} / {expiry.month:02d} / {expiry.year}"
+
+
+def _parse_calibration_date(value: object) -> date | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(text[:10], fmt).date()
+        except ValueError:
+            pass
+    match = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", text)
+    if not match:
+        return None
+    first, second, year = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    day, month = (second, first) if first <= 12 else (first, second)
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
 
 
 def _date_slashes(value: object) -> str:

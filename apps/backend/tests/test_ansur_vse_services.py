@@ -249,6 +249,14 @@ def test_consip_lotto_title_rules():
     assert _lotto_title({"tipologia": "MONITOR", "model": "M1"}) == "APPARECCHIATURA: MONITOR"
 
 
+def test_consip_calibration_expiry_is_one_year_after_calibration():
+    from app.services.consip_pdf_generator import _calibration_expiry_dmy
+
+    assert _calibration_expiry_dmy("10/17/2025") == "17 / 10 / 2026"
+    assert _calibration_expiry_dmy("17/10/2025") == "17 / 10 / 2026"
+    assert _calibration_expiry_dmy("2025-10-17") == "17 / 10 / 2026"
+
+
 def test_source_writer_updates_safe_xml_fields_and_not_measurements():
     tmp_path = workdir()
     source = tmp_path / "source.mtr"
