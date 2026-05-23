@@ -65,6 +65,12 @@ export default function App() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    if (mode === "simple" && !["new", "import", "review", "pdf", "settings"].includes(view)) {
+      setView("new");
+    }
+  }, [mode, view]);
+
   function handleLogin(current: CurrentUser) {
     setUser(current);
     refresh();
