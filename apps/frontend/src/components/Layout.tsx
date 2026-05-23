@@ -25,7 +25,6 @@ const simpleItems: { id: View; label: string; icon: React.ComponentType<{ size?:
   { id: "import", label: "Importazione", icon: FileInput },
   { id: "review", label: "Revisione MTR/CSV/DTA", icon: ClipboardCheck },
   { id: "pdf", label: "PDF", icon: FileText },
-  { id: "settings", label: "Impostazioni", icon: Settings },
 ];
 
 export function Layout({ view, setView, mode, setMode, user, onLogout, children }: { view: View; setView: (view: View) => void; mode: WorkflowMode; setMode: (mode: WorkflowMode) => void; user: CurrentUser; onLogout: () => void; children: React.ReactNode }) {

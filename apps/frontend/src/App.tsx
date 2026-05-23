@@ -66,7 +66,7 @@ export default function App() {
   }, [refresh]);
 
   useEffect(() => {
-    if (mode === "simple" && !["new", "import", "review", "pdf", "settings"].includes(view)) {
+    if (mode === "simple" && !["new", "import", "review", "pdf"].includes(view)) {
       setView("new");
     }
   }, [mode, view]);
