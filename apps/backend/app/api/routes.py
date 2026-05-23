@@ -1082,7 +1082,11 @@ def _jobs_query(db: Session, user: Utente):
 
 
 def _job_workflow_mode(job: LavoroVse) -> str:
-    return "simple" if (job.summary or {}).get("workflow_mode") == "simple" else "full"
+    if (job.summary or {}).get("workflow_mode") == "simple":
+        return "simple"
+    if job.titolo == "Generazione PDF" and not job.excel_path and not job.cliente_nome:
+        return "simple"
+    return "full"
 
 
 def _registry_query(db: Session, user: Utente):

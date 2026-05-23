@@ -43,7 +43,11 @@ class JobRead(BaseModel):
     @computed_field
     @property
     def workflow_mode(self) -> str:
-        return "simple" if (self.summary or {}).get("workflow_mode") == "simple" else "full"
+        if (self.summary or {}).get("workflow_mode") == "simple":
+            return "simple"
+        if self.titolo == "Generazione PDF" and not self.excel_path and not self.cliente_nome:
+            return "simple"
+        return "full"
 
     model_config = {"from_attributes": True}
 
