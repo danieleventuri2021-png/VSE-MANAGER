@@ -257,7 +257,8 @@ def delete_folder(path: str):
 
 @router.post("/jobs", response_model=JobRead)
 def create_job(payload: JobCreate, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
-    job = LavoroVse(titolo=payload.titolo, cliente_nome=payload.cliente_nome, mtr_folder=payload.mtr_folder, owner_user_id=current_user.id)
+    mode = "simple" if payload.workflow_mode == "simple" else "full"
+    job = LavoroVse(titolo=payload.titolo, cliente_nome=payload.cliente_nome, mtr_folder=payload.mtr_folder, owner_user_id=current_user.id, summary={"workflow_mode": mode})
     db.add(job)
     db.flush()
     log_event(db, "job_created", f"Lavoro creato: {payload.titolo}", lavoro_id=job.id)
@@ -787,6 +788,8 @@ def download_all_generated_pdfs(job_id: int, current_user: Utente = Depends(get_
 @router.post("/jobs/{job_id}/registry/sync")
 def sync_registry_from_job(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id, current_user)
+    if _job_workflow_mode(job) == "simple":
+        raise HTTPException(status_code=400, detail="I lavori semplificati non vengono inseriti in archivio")
     report = sync_job_registry(db, job)
     log_event(db, "registry_synced", "Archivio apparecchiature aggiornato dal lavoro VSE", lavoro_id=job_id, dettagli=report)
     db.commit()
@@ -1070,6 +1073,10 @@ def _jobs_query(db: Session, user: Utente):
     if not _is_admin(user):
         query = query.filter(LavoroVse.owner_user_id == user.id)
     return query
+
+
+def _job_workflow_mode(job: LavoroVse) -> str:
+    return "simple" if (job.summary or {}).get("workflow_mode") == "simple" else "full"
 
 
 def _registry_query(db: Session, user: Utente):

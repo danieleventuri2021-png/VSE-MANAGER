@@ -4,7 +4,7 @@ import { analyzeJob, applyJob, importMtrFolder, uploadExcel, uploadMtrFiles, typ
 import { FolderPicker } from "../components/FolderPicker";
 import { Panel } from "../components/Panel";
 
-export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }) {
+export function ImportPage({ jobs, mode = "full", onDone }: { jobs: Job[]; mode?: "full" | "simple"; onDone: () => void }) {
   const [jobId, setJobId] = useState<number>(jobs[0]?.id ?? 0);
   const [file, setFile] = useState<File | null>(null);
   const [mtrFiles, setMtrFiles] = useState<File[]>([]);
@@ -109,12 +109,14 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
           {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
         </select>
       </Panel>
-      <Panel title="Import Excel">
-        <div className="grid gap-3">
-          <input className="text-sm" type="file" accept=".xlsx,.xls" onChange={(event) => setFile(event.target.files?.[0] ?? null)} disabled={busy} />
-          <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runExcel} disabled={busy || !jobId || !file}><FileSpreadsheet size={18} /> Importa Excel</button>
-        </div>
-      </Panel>
+      {mode === "full" && (
+        <Panel title="Import Excel">
+          <div className="grid gap-3">
+            <input className="text-sm" type="file" accept=".xlsx,.xls" onChange={(event) => setFile(event.target.files?.[0] ?? null)} disabled={busy} />
+            <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runExcel} disabled={busy || !jobId || !file}><FileSpreadsheet size={18} /> Importa Excel</button>
+          </div>
+        </Panel>
+      )}
       <Panel title="Scansione MTR/CSV/DTA">
         <div className="grid gap-3">
           <input
@@ -141,19 +143,27 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
           <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtr} disabled={busy || !jobId || !folder}><FolderOpen size={18} /> Scansiona cartella server</button>
         </div>
       </Panel>
-      <Panel title="Analisi e applicazione">
-        <div className="mb-3 grid gap-2 rounded-md border border-line bg-slate-50 p-3 text-sm text-slate-700">
-          <p><strong>Analizza</strong> confronta le righe Excel con i file MTR/CSV/DTA, crea gli abbinamenti e segnala mancanti, orfani e differenze da controllare.</p>
-          <p><strong>Applica modifiche</strong> scrive nei sorgenti MTR/CSV/DTA i dati confermati e rinomina i file, creando prima un backup.</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60" onClick={runAnalyze} disabled={busy || !jobId}><Play size={18} /> Analizza</button>
-          <button className="inline-flex h-10 items-center gap-2 rounded-md bg-ink px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runApply} disabled={busy || !jobId}><Wand2 size={18} /> Applica modifiche</button>
-        </div>
-        {operationSummary && <OperationSummary summary={operationSummary} />}
-        {message && <p className="mt-3 text-sm text-action">{message}</p>}
-        {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      </Panel>
+      {mode === "full" ? (
+        <Panel title="Analisi e applicazione">
+          <div className="mb-3 grid gap-2 rounded-md border border-line bg-slate-50 p-3 text-sm text-slate-700">
+            <p><strong>Analizza</strong> confronta le righe Excel con i file MTR/CSV/DTA, crea gli abbinamenti e segnala mancanti, orfani e differenze da controllare.</p>
+            <p><strong>Applica modifiche</strong> scrive nei sorgenti MTR/CSV/DTA i dati confermati e rinomina i file, creando prima un backup.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60" onClick={runAnalyze} disabled={busy || !jobId}><Play size={18} /> Analizza</button>
+            <button className="inline-flex h-10 items-center gap-2 rounded-md bg-ink px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runApply} disabled={busy || !jobId}><Wand2 size={18} /> Applica modifiche</button>
+          </div>
+          {operationSummary && <OperationSummary summary={operationSummary} />}
+          {message && <p className="mt-3 text-sm text-action">{message}</p>}
+          {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        </Panel>
+      ) : (
+        <Panel title="Importazione semplificata">
+          {operationSummary && <OperationSummary summary={operationSummary} />}
+          {message && <p className="text-sm text-action">{message}</p>}
+          {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        </Panel>
+      )}
       {mtrPickerOpen && <FolderPicker initialPath={folder} title="Seleziona cartella MTR/CSV/DTA" onSelect={(path) => { setFolder(path); setMtrPickerOpen(false); }} onClose={() => setMtrPickerOpen(false)} />}
     </div>
   );

@@ -1,10 +1,10 @@
 import { AlertCircle, Archive, CheckCircle2, Download, FileText, LoaderCircle } from "lucide-react";
 import { useState } from "react";
-import { downloadAllGeneratedPdfs, downloadGeneratedPdf, generateAllPdfs, getReview, listPdfs, type Job } from "../api/client";
+import { downloadAllGeneratedPdfs, downloadGeneratedPdf, generateAllPdfs, getReview, listPdfs, saveJobSettings, type Job } from "../api/client";
 import { Panel } from "../components/Panel";
 import { RefreshButton } from "../components/RefreshButton";
 
-export function PdfPage({ jobs }: { jobs: Job[] }) {
+export function PdfPage({ jobs, mode = "full", onChanged }: { jobs: Job[]; mode?: "full" | "simple"; onChanged?: () => void }) {
   const [jobId, setJobId] = useState<number>(jobs[0]?.id ?? 0);
   const [files, setFiles] = useState<any[]>([]);
   const [pdfs, setPdfs] = useState<any[]>([]);
@@ -42,6 +42,12 @@ export function PdfPage({ jobs }: { jobs: Job[] }) {
     }
   }
 
+  async function updateTemplate(template: string) {
+    if (!jobId) return;
+    await saveJobSettings(jobId, { template_pdf: template, intestazione_pdf: template });
+    await onChanged?.();
+  }
+
   const isRunning = status === "running";
   const selectedJob = jobs.find((job) => job.id === jobId);
   const modelLabel = selectedJob?.template_pdf === "consip" ? "Modello CONSIP" : "Modello generico";
@@ -55,6 +61,12 @@ export function PdfPage({ jobs }: { jobs: Job[] }) {
             {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
           </select>
           {jobId > 0 && <div className="inline-flex h-10 items-center rounded-md border border-line bg-slate-50 px-3 text-sm text-ink">{modelLabel}</div>}
+          {mode === "simple" && jobId > 0 && (
+            <select className="h-10 rounded-md border border-line px-3 text-sm" value={selectedJob?.template_pdf || "standard"} onChange={(event) => updateTemplate(event.target.value)}>
+              <option value="standard">Layout generico</option>
+              <option value="consip">Layout CONSIP</option>
+            </select>
+          )}
           <button
             className="inline-flex h-10 items-center gap-2 rounded-md bg-action px-3 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
             onClick={generateAll}

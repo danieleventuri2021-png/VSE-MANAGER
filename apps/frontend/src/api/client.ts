@@ -31,6 +31,7 @@ export type Job = {
   excel_path: string | null;
   mtr_folder: string | null;
   summary: Record<string, unknown>;
+  workflow_mode?: "full" | "simple" | null;
   tecnico_default?: string | null;
   firma_default_path?: string | null;
   proprieta_default?: string | null;
@@ -137,7 +138,7 @@ export async function deleteJob(jobId: number, confirm: string) {
   return data;
 }
 
-export async function createJob(payload: { titolo: string; cliente_nome?: string; mtr_folder?: string }) {
+export async function createJob(payload: { titolo: string; cliente_nome?: string; mtr_folder?: string; workflow_mode?: "full" | "simple" }) {
   const { data } = await api.post("/api/jobs", payload);
   return data as Job;
 }

@@ -2,12 +2,14 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
+from pydantic import computed_field
 
 
 class JobCreate(BaseModel):
     titolo: str = Field(min_length=1, max_length=255)
     cliente_nome: str | None = None
     mtr_folder: str | None = None
+    workflow_mode: str | None = None
 
 
 class FolderRequest(BaseModel):
@@ -37,6 +39,11 @@ class JobRead(BaseModel):
     intestazione_pdf: str | None = None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field
+    @property
+    def workflow_mode(self) -> str:
+        return "simple" if (self.summary or {}).get("workflow_mode") == "simple" else "full"
 
     model_config = {"from_attributes": True}
 

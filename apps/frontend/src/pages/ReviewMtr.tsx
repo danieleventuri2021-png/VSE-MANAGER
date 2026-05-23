@@ -75,7 +75,7 @@ function yesNoOptions() {
   return [{ value: "SI", label: "SI" }, { value: "NO", label: "NO" }];
 }
 
-export function ReviewMtr({ jobs }: { jobs: Job[] }) {
+export function ReviewMtr({ jobs, mode = "full" }: { jobs: Job[]; mode?: "full" | "simple" }) {
   const [jobId, setJobId] = useState<number>(jobs[0]?.id ?? 0);
   const [items, setItems] = useState<any[]>([]);
   const [selected, setSelected] = useState<number>(0);
@@ -169,14 +169,14 @@ export function ReviewMtr({ jobs }: { jobs: Job[] }) {
                 ))}
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={() => saveSource(selected, { fields })}>Salva nel sorgente MTR/CSV/DTA</button>
+                {mode === "full" && <button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={() => saveSource(selected, { fields })}>Salva nel sorgente MTR/CSV/DTA</button>}
                 <button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={() => generateOnePdf(jobId, selected)}><FileCheck size={16} /> Genera PDF singolo</button>
               </div>
             </Panel>
-            <Panel title="Dati sorgente, Excel e finali">
-              <div className="grid gap-4 lg:grid-cols-3">
+            <Panel title={mode === "simple" ? "Dati sorgente e finali" : "Dati sorgente, Excel e finali"}>
+              <div className={`grid gap-4 ${mode === "simple" ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
                 <DataBlock title="MTR/CSV/DTA / Ansur" data={detail.source} />
-                <DataBlock title="Excel associato" data={detail.excel} />
+                {mode === "full" && <DataBlock title="Excel associato" data={detail.excel} />}
                 <DataBlock title="Finale PDF" data={detail.final} badges={detail.badges} />
               </div>
             </Panel>

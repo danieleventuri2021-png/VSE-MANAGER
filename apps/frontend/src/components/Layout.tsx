@@ -3,6 +3,7 @@ import type React from "react";
 import type { CurrentUser } from "../api/client";
 
 type View = "dashboard" | "jobs" | "new" | "import" | "matches" | "review" | "pdf" | "registry" | "job-settings" | "anomalies" | "logs" | "settings";
+type WorkflowMode = "full" | "simple";
 
 const items: { id: View; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
   { id: "dashboard", label: "Dashboard", icon: Gauge },
@@ -19,7 +20,16 @@ const items: { id: View; label: string; icon: React.ComponentType<{ size?: numbe
   { id: "settings", label: "Impostazioni", icon: Settings },
 ];
 
-export function Layout({ view, setView, user, onLogout, children }: { view: View; setView: (view: View) => void; user: CurrentUser; onLogout: () => void; children: React.ReactNode }) {
+const simpleItems: { id: View; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
+  { id: "new", label: "Nuovo lavoro", icon: Plus },
+  { id: "import", label: "Importazione", icon: FileInput },
+  { id: "review", label: "Revisione MTR/CSV/DTA", icon: ClipboardCheck },
+  { id: "pdf", label: "PDF", icon: FileText },
+  { id: "settings", label: "Impostazioni", icon: Settings },
+];
+
+export function Layout({ view, setView, mode, setMode, user, onLogout, children }: { view: View; setView: (view: View) => void; mode: WorkflowMode; setMode: (mode: WorkflowMode) => void; user: CurrentUser; onLogout: () => void; children: React.ReactNode }) {
+  const navItems = mode === "simple" ? simpleItems : items;
   return (
     <div className="min-h-screen lg:flex">
       <aside className="border-r border-line bg-white lg:w-64">
@@ -27,11 +37,11 @@ export function Layout({ view, setView, user, onLogout, children }: { view: View
           <Activity className="text-action" size={24} />
           <div>
             <div className="text-sm font-semibold uppercase tracking-wide text-action">gestione-vse</div>
-            <div className="text-xs text-slate-500">VSE / MTR/CSV/DTA locale</div>
+            <div className="text-xs text-slate-500">{mode === "simple" ? "Modalita semplificata" : "Versione completa"}</div>
           </div>
         </div>
         <nav className="grid gap-1 p-3">
-          {items.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = item.id === view;
             return (
@@ -51,9 +61,12 @@ export function Layout({ view, setView, user, onLogout, children }: { view: View
         <header className="flex h-16 items-center justify-between border-b border-line bg-white px-5">
           <div>
             <h1 className="text-lg font-semibold text-ink">Gestione verifiche elettriche</h1>
-            <p className="text-xs text-slate-500">Import Excel, analisi MTR/CSV/DTA, anomalie e rinomina controllata</p>
+            <p className="text-xs text-slate-500">{mode === "simple" ? "Flusso estemporaneo: import file, revisione e PDF" : "Import Excel, analisi MTR/CSV/DTA, anomalie e rinomina controllata"}</p>
           </div>
           <div className="flex items-center gap-3">
+            <button className="inline-flex h-9 items-center rounded-md border border-line px-3 text-sm text-slate-700 hover:bg-slate-100" onClick={() => setMode(mode === "simple" ? "full" : "simple")}>
+              {mode === "simple" ? "Passa a completa" : "Passa a semplificata"}
+            </button>
             <div className="text-right">
               <div className="text-sm font-medium text-ink">{user.nome || user.username}</div>
               <div className="text-xs text-slate-500">{user.ruolo}</div>
@@ -70,3 +83,4 @@ export function Layout({ view, setView, user, onLogout, children }: { view: View
 }
 
 export type { View };
+export type { WorkflowMode };
