@@ -344,6 +344,20 @@ def test_pdf_legacy_data_formats_dta_dates_for_layouts():
     assert _calibration_expiry_dmy(data["instrument"]["calibrationDate"]) == "17 / 10 / 2026"
 
 
+def test_legacy_pdf_adapter_formats_iso_dates_before_generation():
+    from app.services.esa615_legacy_adapter import _normalize_legacy_pdf_dates
+
+    data = _normalize_legacy_pdf_dates(
+        {
+            "testDate": "2026-04-13T16:39",
+            "instrument": {"calibrationDate": "2025-10-17"},
+        }
+    )
+
+    assert data["testDate"] == "13/04/2026"
+    assert data["instrument"]["calibrationDate"] == "17/10/2025"
+
+
 def test_source_writer_updates_safe_xml_fields_and_not_measurements():
     tmp_path = workdir()
     source = tmp_path / "source.mtr"

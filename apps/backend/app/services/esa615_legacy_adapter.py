@@ -1,6 +1,7 @@
 from pathlib import Path
 import importlib.util
 import tempfile
+from datetime import datetime
 from types import ModuleType
 from typing import Any
 
@@ -54,7 +55,7 @@ def generate_pdf_legacy(data: dict, edited: dict, output_path: str | Path, heade
     old_header = getattr(module, "HEADER_IMAGE_OVERRIDE", None)
     module.HEADER_IMAGE_OVERRIDE = header_image or None
     try:
-        module.generate_pdf(data, edited, str(output_path))
+        module.generate_pdf(_normalize_legacy_pdf_dates(data), edited, str(output_path))
     finally:
         module.HEADER_IMAGE_OVERRIDE = old_header
 
@@ -93,3 +94,26 @@ def sanitize_filename_legacy(value: str) -> str:
 
 def earth_res_positions() -> list[str]:
     return list(_legacy_module().EARTH_RES_POSITIONS)
+
+
+def _normalize_legacy_pdf_dates(data: dict) -> dict:
+    result = dict(data)
+    result["testDate"] = _italian_date(result.get("testDate"))
+    instrument = dict(result.get("instrument") or {})
+    instrument["calibrationDate"] = _italian_date(instrument.get("calibrationDate"))
+    result["instrument"] = instrument
+    return result
+
+
+def _italian_date(value: object) -> str:
+    text = str(value or "").strip()
+    if not text or text == "-":
+        return text
+    text = text.replace("T", " ").split(" ", 1)[0]
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d-%m-%Y", "%m/%d/%Y", "%d/%m/%Y"):
+        try:
+            parsed = datetime.strptime(text[:10], fmt).date()
+            return f"{parsed.day:02d}/{parsed.month:02d}/{parsed.year}"
+        except ValueError:
+            pass
+    return text
