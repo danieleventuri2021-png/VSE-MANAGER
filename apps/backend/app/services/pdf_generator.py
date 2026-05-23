@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 from app.services.esa615_legacy_adapter import (
@@ -46,6 +47,8 @@ def _normalize_template_pdf(template_pdf: str | None) -> str:
 def to_legacy_data(data: dict) -> dict:
     instrument = data.get("instrument") or {}
     measurements = [_to_legacy_measurement(item) for item in (data.get("measurements") or data.get("misure") or [])]
+    test_date = _italian_date(data.get("testDate") or data.get("data_test") or data.get("data_verifica") or "")
+    calibration_date = _italian_date(instrument.get("calibrationDate") or instrument.get("calibration_date") or data.get("strumento_calibrazione") or "")
     legacy = {
         "sourceFile": data.get("source_file") or data.get("nome_file") or "",
         "sourceFilePath": data.get("source_path") or data.get("path_corrente") or "",
@@ -59,12 +62,12 @@ def to_legacy_data(data: dict) -> dict:
         "templateName": data.get("templateName") or data.get("template_ansur") or "",
         "classification": data.get("classification") or data.get("classe") or data.get("classe_elettrica") or "I",
         "apType": data.get("apType") or data.get("parte_applicata") or "B",
-        "testDate": data.get("testDate") or data.get("data_test") or data.get("data_verifica") or "",
+        "testDate": test_date,
         "overallStatus": _legacy_status(data.get("overallStatus") or data.get("esito_generale") or data.get("esito") or ""),
         "instrument": {
             "type": instrument.get("type") or data.get("strumento_tipo") or "ESA615",
             "serialNumber": instrument.get("serialNumber") or instrument.get("serial_number") or data.get("strumento_seriale") or "",
-            "calibrationDate": instrument.get("calibrationDate") or instrument.get("calibration_date") or data.get("strumento_calibrazione") or "",
+            "calibrationDate": calibration_date,
         },
         "measurements": measurements,
     }
@@ -160,6 +163,26 @@ def _legacy_status(value: object) -> str:
     if text in {"failed", "fail", "ko", "non conforme", "negativo"}:
         return "Failed"
     return str(value or "")
+
+
+def _italian_date(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = text.replace("T", " ").split(" ", 1)[0]
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d-%m-%Y"):
+        try:
+            parsed = datetime.strptime(text[:10], fmt).date()
+            return f"{parsed.day:02d}/{parsed.month:02d}/{parsed.year}"
+        except ValueError:
+            pass
+    for fmt in ("%m/%d/%Y", "%d/%m/%Y"):
+        try:
+            parsed = datetime.strptime(text, fmt).date()
+            return f"{parsed.day:02d}/{parsed.month:02d}/{parsed.year}"
+        except ValueError:
+            pass
+    return text
 
 
 def _visual_value(data: dict, key: str) -> str:

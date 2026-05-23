@@ -328,6 +328,22 @@ def test_consip_calibration_expiry_is_one_year_after_calibration():
     assert _calibration_expiry_dmy("2025-10-17") == "17 / 10 / 2026"
 
 
+def test_pdf_legacy_data_formats_dta_dates_for_layouts():
+    from app.services.consip_pdf_generator import _calibration_expiry_dmy
+    from app.services.pdf_generator import to_legacy_data
+
+    data = to_legacy_data(
+        {
+            "data_test": "2026-04-13T09:55",
+            "instrument": {"calibration_date": "2025-10-17"},
+        }
+    )
+
+    assert data["testDate"] == "13/04/2026"
+    assert data["instrument"]["calibrationDate"] == "17/10/2025"
+    assert _calibration_expiry_dmy(data["instrument"]["calibrationDate"]) == "17 / 10 / 2026"
+
+
 def test_source_writer_updates_safe_xml_fields_and_not_measurements():
     tmp_path = workdir()
     source = tmp_path / "source.mtr"
