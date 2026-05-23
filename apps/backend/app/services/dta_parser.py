@@ -53,7 +53,7 @@ def parse_esa615_dta(path: str | Path) -> dict[str, Any]:
         },
         "ansur": {
             "template_name": _empty_to_none(header.get("MASTERFILE") or header.get("NAME")),
-            "electrical_class": _empty_to_none(header.get("CLASSIFICATION")),
+            "electrical_class": _electrical_class(header.get("CLASSIFICATION")),
             "applied_part_type": _first_csv_value(header.get("APTYPE")),
             "is_permanent_three_measure_template": False,
         },
@@ -95,6 +95,8 @@ def _parse_measurements(content: str) -> list[dict[str, Any]]:
     for match in pattern.finditer(content):
         kind = match.group(1).upper()
         code = match.group(2).strip().upper()
+        if code.startswith("ZERO-"):
+            continue
         raw_row = " ".join(match.group(3).strip().splitlines()).strip()
         parts = [part.strip() for part in raw_row.split(",")]
         value_token = _value_token(parts)
@@ -106,7 +108,7 @@ def _parse_measurements(content: str) -> list[dict[str, Any]]:
             "name": TEST_NAMES.get(code, code),
             "description": TEST_NAMES.get(code, code),
             "value": value,
-            "unit": VALUE_UNITS.get(prefix, ""),
+            "unit": _measurement_unit(prefix, code),
             "result": status,
             "parameter": code,
             "test_element": kind,
@@ -145,6 +147,23 @@ def _status(value: str) -> str:
     if token in {"F", "FAIL", "FAILED"}:
         return "FAIL"
     return token if token not in {"", "-"} else ""
+
+
+def _measurement_unit(prefix: str, code: str) -> str:
+    if prefix.upper() == "U" and code.startswith("DMAP-AC"):
+        return "uAAC"
+    return VALUE_UNITS.get(prefix.upper(), "")
+
+
+def _electrical_class(value: str | None) -> str | None:
+    token = (value or "").strip().upper()
+    if token == "1":
+        return "I"
+    if token == "2":
+        return "II"
+    if token == "IP":
+        return "AI"
+    return token or None
 
 
 def _overall_status(measurements: list[dict[str, Any]]) -> str | None:
