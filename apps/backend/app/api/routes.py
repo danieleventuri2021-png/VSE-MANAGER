@@ -269,7 +269,8 @@ def create_job(payload: JobCreate, current_user: Utente = Depends(get_current_us
 
 @router.get("/jobs", response_model=list[JobRead])
 def list_jobs(current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
-    return _jobs_query(db, current_user).order_by(LavoroVse.created_at.desc()).all()
+    jobs = _jobs_query(db, current_user).order_by(LavoroVse.created_at.desc()).all()
+    return sorted(jobs, key=_job_list_priority)
 
 
 @router.get("/jobs/{job_id}", response_model=JobRead)
@@ -1087,6 +1088,20 @@ def _job_workflow_mode(job: LavoroVse) -> str:
     if job.titolo == "Generazione PDF" and not job.excel_path and not job.cliente_nome:
         return "simple"
     return "full"
+
+
+def _job_list_priority(job: LavoroVse) -> tuple[int, float]:
+    summary = job.summary or {}
+    has_files = _summary_int(summary.get("mtr_files")) > 0
+    priority = 0 if _job_workflow_mode(job) == "simple" and has_files else 1
+    return (priority, -job.created_at.timestamp())
+
+
+def _summary_int(value) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _registry_query(db: Session, user: Utente):
