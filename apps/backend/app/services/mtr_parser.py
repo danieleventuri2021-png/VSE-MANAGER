@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.services.ansur_parser import parse_ansur_mtr
 from app.services.csv_parser import parse_esa615_csv
+from app.services.dta_parser import parse_esa615_dta
 from app.services.esa615_legacy_adapter import parse_csv_legacy, parse_mtr_legacy
 from app.services.measurement_indexer import build_measurement_index
 
@@ -21,6 +22,8 @@ FIELD_PATTERNS = {
 def parse_mtr_file(path: str | Path) -> dict:
     file_path = Path(path)
     content = file_path.read_text(encoding="utf-8", errors="ignore")
+    if file_path.suffix.lower() == ".dta":
+        return _legacy_from_normalized(parse_esa615_dta(file_path))
     if _looks_like_xml(content):
         try:
             parsed = _normalized_from_legacy_esa615(file_path, parse_mtr_legacy(file_path))
@@ -65,7 +68,7 @@ def scan_mtr_folder(folder: str | Path) -> list[dict]:
     folder_path = Path(folder)
     if not folder_path.exists() or not folder_path.is_dir():
         raise FileNotFoundError(f"Cartella MTR non trovata: {folder_path}")
-    paths = sorted({path.resolve() for path in [*folder_path.glob("*.MTR"), *folder_path.glob("*.mtr"), *folder_path.glob("*.csv"), *folder_path.glob("*.CSV")]})
+    paths = sorted({path.resolve() for path in [*folder_path.glob("*.MTR"), *folder_path.glob("*.mtr"), *folder_path.glob("*.csv"), *folder_path.glob("*.CSV"), *folder_path.glob("*.dta"), *folder_path.glob("*.DTA")]})
     return [parse_mtr_file(path) for path in paths]
 
 

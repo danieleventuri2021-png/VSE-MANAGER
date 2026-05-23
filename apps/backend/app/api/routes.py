@@ -20,12 +20,13 @@ from app.services.backup_service import create_backup
 from app.services.bulk_pdf_service import build_final_pdf_data, generate_all_pdfs, generate_one_pdf
 from app.services.equipment_registry_service import build_registry_ics, sync_job_registry
 from app.services.equipment_registry_service import normalize_identifier as normalize_registry_identifier
-from app.services.equipment_registry_service import registry_data_from_pdf_data, registry_match_score
+from app.services.equipment_registry_service import registry_data_from_pdf_data, registry_identity_match_score, registry_match_score
 from app.services.difference_analyzer import analyze_differences
 from app.services.excel_importer import import_excel
 from app.services.file_renamer import rename_mtr
 from app.services.log_service import log_event
 from app.services.matcher import match_records
+from app.services.measurement_deduplication_service import cleanup_duplicate_measurement_files, filter_duplicate_measurement_files
 from app.services.mtr_parser import parse_mtr_file, scan_mtr_folder
 from app.services.mtr_writer import write_mtr_updates
 from app.services.port_checker import check_ports
@@ -344,8 +345,10 @@ def upload_job_asset(job_id: int, field: str, file: UploadFile = File(...), curr
 def import_mtr_folder(job_id: int, payload: FolderRequest, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id, current_user)
     parsed_files = scan_mtr_folder(payload.folder_path)
-    _replace_mtr_files(db, job, parsed_files, payload.folder_path)
-    log_event(db, "mtr_imported", f"Importati {len(parsed_files)} file MTR/CSV", lavoro_id=job_id)
+    _assign_missing_device_identifiers(parsed_files)
+    kept_files, skipped_duplicates = filter_duplicate_measurement_files(db, job, parsed_files)
+    _replace_mtr_files(db, job, kept_files, payload.folder_path, skipped_duplicates, len(parsed_files))
+    log_event(db, "mtr_imported", f"Importati {len(kept_files)} file MTR/CSV/DTA", lavoro_id=job_id, dettagli={"skipped_duplicates": skipped_duplicates})
     db.commit()
     db.refresh(job)
     return job
@@ -355,7 +358,7 @@ def import_mtr_folder(job_id: int, payload: FolderRequest, current_user: Utente 
 def upload_mtr_files(job_id: int, files: list[UploadFile] = File(...), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id, current_user)
     if not files:
-        raise HTTPException(status_code=400, detail="Nessun file MTR/CSV selezionato")
+        raise HTTPException(status_code=400, detail="Nessun file MTR/CSV/DTA selezionato")
 
     settings = get_settings()
     target_dir = Path(settings.input_dir) / f"job_{job_id}" / "mtr_upload"
@@ -374,7 +377,7 @@ def upload_mtr_files(job_id: int, files: list[UploadFile] = File(...), current_u
             with zip_path.open("wb") as handle:
                 shutil.copyfileobj(upload.file, handle)
             saved_paths.extend(_extract_mtr_zip(zip_path, target_dir / "zip"))
-        elif suffix in {".mtr", ".csv"}:
+        elif suffix in {".mtr", ".csv", ".dta"}:
             target = _unique_path(target_dir, filename)
             with target.open("wb") as handle:
                 shutil.copyfileobj(upload.file, handle)
@@ -383,11 +386,13 @@ def upload_mtr_files(job_id: int, files: list[UploadFile] = File(...), current_u
             raise HTTPException(status_code=400, detail=f"Formato file non supportato: {filename}")
 
     if not saved_paths:
-        raise HTTPException(status_code=400, detail="Nessun file MTR/CSV valido trovato")
+        raise HTTPException(status_code=400, detail="Nessun file MTR/CSV/DTA valido trovato")
 
     parsed_files = [parse_mtr_file(path) for path in sorted(saved_paths, key=lambda item: item.name.lower())]
-    _replace_mtr_files(db, job, parsed_files, str(target_dir))
-    log_event(db, "mtr_uploaded", f"Caricati {len(parsed_files)} file MTR/CSV", lavoro_id=job_id, dettagli={"files": [path.name for path in saved_paths]})
+    _assign_missing_device_identifiers(parsed_files)
+    kept_files, skipped_duplicates = filter_duplicate_measurement_files(db, job, parsed_files)
+    _replace_mtr_files(db, job, kept_files, str(target_dir), skipped_duplicates, len(parsed_files))
+    log_event(db, "mtr_uploaded", f"Caricati {len(kept_files)} file MTR/CSV/DTA", lavoro_id=job_id, dettagli={"files": [path.name for path in saved_paths], "skipped_duplicates": skipped_duplicates})
     db.commit()
     db.refresh(job)
     return job
@@ -423,14 +428,14 @@ def analyze_job(job_id: int, current_user: Utente = Depends(get_current_user), d
             differences = analyze_differences(_equipment_dict(eq), _mtr_dict(mtr))
             if differences["fields"]:
                 counts["differenze"] += len(differences["fields"])
-                create_anomaly(db, job_id, "differenza_excel_mtr", "Differenze tra Excel e MTR/CSV", "warning", {"equipment_id": eq.id, "mtr_id": mtr.id, "fields": differences["fields"]})
+                create_anomaly(db, job_id, "differenza_excel_mtr", "Differenze tra Excel e MTR/CSV/DTA", "warning", {"equipment_id": eq.id, "mtr_id": mtr.id, "fields": differences["fields"]})
         else:
             eq.matched_file_mtr_id = None
-            create_anomaly(db, job_id, "mtr_mancante", "Nessun file MTR/CSV associato alla riga Excel", "error", {"equipment_id": eq.id, "score": match.score})
+            create_anomaly(db, job_id, "mtr_mancante", "Nessun file MTR/CSV/DTA associato alla riga Excel", "error", {"equipment_id": eq.id, "score": match.score})
         counts[match.status] += 1
     for index in orphans:
         mtr_rows[index].stato = "mtr_orfano"
-        create_anomaly(db, job_id, "mtr_orfano", "File MTR/CSV non associato ad alcuna riga Excel", "info", {"mtr_id": mtr_rows[index].id})
+        create_anomaly(db, job_id, "mtr_orfano", "File MTR/CSV/DTA non associato ad alcuna riga Excel", "info", {"mtr_id": mtr_rows[index].id})
     job.stato = "analizzato"
     job.summary = {**job.summary, **counts}
     log_event(db, "job_analyzed", "Analisi completata", lavoro_id=job_id, dettagli=counts)
@@ -467,7 +472,7 @@ def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), d
             "status": file_mtr.stato or "mtr_orfano",
             "score": None,
             "mtr": _mtr_dict(file_mtr),
-            "reason": "File MTR/CSV senza riga Excel associata",
+            "reason": "File MTR/CSV/DTA senza riga Excel associata",
             "differences": {"missing_excel": True, "fields": []},
             "registry_match": _registry_candidate_for_match(db, job, file_mtr, file_mtr.verifiche[0] if file_mtr.verifiche else None),
         }
@@ -485,7 +490,7 @@ def resolve_match_differences(job_id: int, payload: MatchResolveRequest, current
     if not equipment or equipment.lavoro_id != job.id:
         raise HTTPException(status_code=404, detail="Riga Excel non trovata")
     if not file_mtr or file_mtr.lavoro_id != job.id:
-        raise HTTPException(status_code=404, detail="File MTR/CSV non trovato")
+        raise HTTPException(status_code=404, detail="File MTR/CSV/DTA non trovato")
     allowed_fields = {"matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "stanza"}
     mtr_updates = {}
     excel_updates = {}
@@ -605,7 +610,7 @@ def apply_job(job_id: int, current_user: Utente = Depends(get_current_user), db:
             conflicts.append({"from": old_path, "to": str(new_path)})
     job.stato = "applicato"
     job.summary = {**job.summary, "renamed": len(renamed), "rename_conflicts": len(conflicts), "last_backup": str(backup_dir)}
-    log_event(db, "changes_applied", "Aggiornamenti MTR/CSV applicati", lavoro_id=job_id, dettagli={"backup_dir": str(backup_dir), "renamed": len(renamed)})
+    log_event(db, "changes_applied", "Aggiornamenti MTR/CSV/DTA applicati", lavoro_id=job_id, dettagli={"backup_dir": str(backup_dir), "renamed": len(renamed)})
     db.commit()
     return ApplyResult(backup_dir=str(backup_dir), renamed=renamed, conflicts=conflicts)
 
@@ -689,7 +694,7 @@ def apply_job_defaults(job_id: int, payload: dict = Body(default={}), current_us
         if fields:
             verification.dati_finali_pdf_json = build_final_pdf_data(job, file_mtr, verification)
             changed.append({"file_mtr_id": file_mtr.id, "fields": fields})
-    log_event(db, "job_defaults_applied", "Default lavoro applicati agli MTR/CSV non bloccati", lavoro_id=job_id, dettagli={"changed": len(changed)})
+    log_event(db, "job_defaults_applied", "Default lavoro applicati agli MTR/CSV/DTA non bloccati", lavoro_id=job_id, dettagli={"changed": len(changed)})
     db.commit()
     return {"updated": len(changed), "items": changed}
 
@@ -698,7 +703,7 @@ def apply_job_defaults(job_id: int, payload: dict = Body(default={}), current_us
 def save_source(file_mtr_id: int, payload: dict = Body(default={}), current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     file_mtr = db.get(FileMtr, file_mtr_id)
     if not file_mtr or not _can_access_job(file_mtr.lavoro, current_user):
-        raise HTTPException(status_code=404, detail="File MTR/CSV non trovato")
+        raise HTTPException(status_code=404, detail="File MTR/CSV/DTA non trovato")
     settings = get_settings()
     verification = _ensure_verification(db, file_mtr)
     updates = payload.get("fields") or verification.dati_revisionati_json or {}
@@ -788,6 +793,14 @@ def sync_registry_from_job(job_id: int, current_user: Utente = Depends(get_curre
     return report
 
 
+@router.post("/registry/measurements/cleanup-duplicates")
+def cleanup_registry_duplicate_measurements(current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
+    report = cleanup_duplicate_measurement_files(db, None if _is_admin(current_user) else current_user.id)
+    log_event(db, "measurement_duplicates_cleaned", "Misure duplicate per apparecchiatura e data eliminate", dettagli=report)
+    db.commit()
+    return report
+
+
 @router.get("/registry/equipment")
 def list_registry_equipment(cliente: str | None = None, due_before: str | None = None, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     query = _registry_query(db, current_user)
@@ -862,7 +875,7 @@ def get_registry_equipment_trend(equipment_id: int, current_user: Utente = Depen
             continue
         data = build_final_pdf_data(job, file_mtr, verification)
         row_data = registry_data_from_pdf_data(job, file_mtr, verification, data)
-        if registry_match_score(row, row_data)["score"] < 90:
+        if registry_identity_match_score(row, row_data)["score"] < 90:
             continue
         date_value = data.get("testDate") or data.get("data_test") or data.get("data_verifica") or verification.data_verifica or verification.created_at.date().isoformat()
         history.append({"date": str(date_value), "measurements": _clean_measurements(data.get("measurements") or [])})
@@ -886,7 +899,7 @@ def export_registry_calendar(cliente: str | None = None, current_user: Utente = 
     return Response(content=content, media_type="text/calendar", headers={"Content-Disposition": 'attachment; filename="scadenze-vse.ics"'})
 
 
-def _replace_mtr_files(db: Session, job: LavoroVse, parsed_files: list[dict], folder_path: str) -> None:
+def _replace_mtr_files(db: Session, job: LavoroVse, parsed_files: list[dict], folder_path: str, skipped_duplicates: list[dict] | None = None, scanned_count: int | None = None) -> None:
     db.query(FileMtr).filter(FileMtr.lavoro_id == job.id).delete()
     for parsed in parsed_files:
         db.add(
@@ -912,7 +925,46 @@ def _replace_mtr_files(db: Session, job: LavoroVse, parsed_files: list[dict], fo
         )
     job.mtr_folder = folder_path
     job.stato = "mtr_importati"
-    job.summary = {**(job.summary or {}), "mtr_files": len(parsed_files)}
+    job.summary = {
+        **(job.summary or {}),
+        "mtr_files": len(parsed_files),
+        "mtr_files_scanned": scanned_count if scanned_count is not None else len(parsed_files),
+        "mtr_duplicates_skipped": len(skipped_duplicates or []),
+        "mtr_duplicate_details": skipped_duplicates or [],
+    }
+
+
+def _assign_missing_device_identifiers(parsed_files: list[dict]) -> None:
+    groups: dict[tuple[str, str, str], list[dict]] = {}
+    for parsed in parsed_files:
+        if _parsed_identifier_value(parsed):
+            continue
+        key = (
+            _normalize_descriptor(parsed.get("descrizione") or ((parsed.get("normalized") or {}).get("dut") or {}).get("description")),
+            _normalize_descriptor(parsed.get("produttore") or ((parsed.get("normalized") or {}).get("dut") or {}).get("manufacturer")),
+            _normalize_descriptor(parsed.get("modello") or ((parsed.get("normalized") or {}).get("dut") or {}).get("model")),
+        )
+        if all(key):
+            groups.setdefault(key, []).append(parsed)
+    for rows in groups.values():
+        if len(rows) < 2:
+            continue
+        for index, parsed in enumerate(sorted(rows, key=lambda item: str(item.get("nome_file") or item.get("path") or "")), start=1):
+            label = f"Disp{index}"
+            parsed["inventario"] = label
+            normalized = parsed.setdefault("normalized", {})
+            dut = normalized.setdefault("dut", {})
+            dut["inventory"] = label
+
+
+def _parsed_identifier_value(parsed: dict) -> str:
+    normalized = parsed.get("normalized") or {}
+    dut = normalized.get("dut") or {}
+    return _first_value(parsed.get("matricola"), parsed.get("seriale"), parsed.get("inventario"), dut.get("serial_number"), dut.get("inventory"))
+
+
+def _normalize_descriptor(value: object) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip().lower())
 
 
 def _update_file_mtr_from_parsed(row: FileMtr, parsed: dict) -> None:
@@ -942,7 +994,7 @@ def _extract_mtr_zip(zip_path: Path, output_dir: Path) -> list[Path]:
                 if info.is_dir():
                     continue
                 filename = Path(info.filename).name
-                if not filename or Path(filename).suffix.lower() not in {".mtr", ".csv"}:
+                if not filename or Path(filename).suffix.lower() not in {".mtr", ".csv", ".dta"}:
                     continue
                 target = _unique_path(output_dir, filename)
                 with archive.open(info) as source, target.open("wb") as destination:
@@ -1037,7 +1089,7 @@ def _job_or_404(db: Session, job_id: int, user: Utente) -> LavoroVse:
 def _file_or_404(db: Session, file_mtr_id: int, job_id: int | None = None, user: Utente | None = None) -> FileMtr:
     file_mtr = db.get(FileMtr, file_mtr_id)
     if not file_mtr or (job_id is not None and file_mtr.lavoro_id != job_id) or (user is not None and not _can_access_job(file_mtr.lavoro, user)):
-        raise HTTPException(status_code=404, detail="File MTR/CSV non trovato")
+        raise HTTPException(status_code=404, detail="File MTR/CSV/DTA non trovato")
     return file_mtr
 
 
@@ -1119,7 +1171,7 @@ def _mtr_field_value(row: FileMtr, field: str) -> object:
 
 def _match_reason(equipment: dict, mtr: dict | None) -> str:
     if not mtr:
-        return "Nessun file MTR/CSV compatibile trovato"
+        return "Nessun file MTR/CSV/DTA compatibile trovato"
     if _same_value(equipment.get("matricola"), mtr.get("matricola")) or _same_value(equipment.get("seriale"), mtr.get("seriale")):
         return "Matricola/seriale uguale"
     if _same_value(equipment.get("inventario"), mtr.get("inventario")):
@@ -1152,7 +1204,7 @@ def _field_badges(verification: VerificaVse, final: dict) -> dict:
         elif field in excel:
             badges[field] = "derivato da Excel"
         elif field in ansur and ansur.get(field):
-            badges[field] = "derivato da MTR/CSV"
+            badges[field] = "derivato da MTR/CSV/DTA"
         else:
             badges[field] = "default lavoro"
     return badges

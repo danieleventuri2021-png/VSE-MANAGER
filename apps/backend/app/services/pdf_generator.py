@@ -117,6 +117,25 @@ def to_legacy_edited(data: dict) -> dict:
         "funz_normativa": data.get("funz_normativa") or "",
         "note": data.get("note") or "",
     }
+    for key in (
+        "installazione_consip",
+        "consip_valori_prima_misura",
+        "consip_norma_riferimento",
+        "consip_metodo_misura",
+        "consip_boot_calibrazione",
+        "consip_cavi_terra_supplementari",
+        "consip_classe_alimentazione_sicurezza",
+        "consip_trasformatore_isolamento",
+        "consip_connessione_nodo_locale",
+        "vista_funzionamento",
+        "vista_ruote",
+        "vista_spine",
+        "vista_tubazioni",
+        "consip_valutazione_finale",
+        "consip_provvedimenti_note",
+        "consip_copia_firma_responsabile",
+    ):
+        edited[key] = data.get(key) or ""
     return edited
 
 

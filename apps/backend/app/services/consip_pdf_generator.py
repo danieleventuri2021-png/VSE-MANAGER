@@ -183,44 +183,54 @@ class ConsipVsePDF(FPDF):
         for idx, label in enumerate(("0", "B", "BF", "CF")):
             self.checkbox(x + 34 + idx * 18, y + 12.6, label, (self.ed.get("apType") or "") == label, size=8.5)
         self.cell_at(x + 112, y + 10, 52, 3, f"Frequenze Prove [mesi]: {self.ed.get('periodicita', '')}", size=8.5)
-        install = self.ed.get("installazione", "")
+        install = self.ed.get("installazione_consip") or ("fissa" if self.ed.get("installazione") == "Permanente" else "cavo separabile")
         self.cell_at(x + 2, y + 14.2, 42, 3, "Tipo di Installazione:", size=8.5)
-        self.checkbox(x + 44, y + 16.9, "fissa", install == "Permanente", size=8.5)
-        self.checkbox(x + 87, y + 16.9, "cavo separabile", True, size=8.5)
-        self.checkbox(x + 130, y + 16.9, "cavo non separabile", False, size=8.5)
+        self.checkbox(x + 44, y + 16.9, "fissa", install == "fissa", size=8.5)
+        self.checkbox(x + 87, y + 16.9, "cavo separabile", install == "cavo separabile", size=8.5)
+        self.checkbox(x + 130, y + 16.9, "cavo non separabile", install == "cavo non separabile", size=8.5)
 
     def _section_condizioni(self, x: float, y: float, w: float) -> None:
         h = 35.7
         self.box(x, y, w, h)
         for yy in (4.8, 8.4, 12.2, 17.0, 23.7, 30.3):
             self.line(x, y + yy, x + w, y + yy)
-        for xx in (47.2, 62.4, 76.5, 120.5, 144.6, 157.4):
+        for xx in (47.2, 62.4, 76.5, 120.5, 144.6):
             self.line(x + xx, y + 4.8, x + xx, y + 8.4)
+        for xx in (47.2, 62.4, 76.5, 120.5, 144.6, 157.4):
             self.line(x + xx, y + 17.0, x + xx, y + h)
         self.cell_at(x + 2, y + 0.8, w - 4, 3.4, "Condizioni di Prova", style="B", size=9)
         self.cell_at(x + 2, y + 5.0, 46, 3.2, "Valori di Prima misura?", size=8)
-        self.checkbox(x + 52, y + 7.6, "SI", True, size=8)
-        self.checkbox(x + 66, y + 7.6, "NO", False, size=8)
+        prima_misura = self.ed.get("consip_valori_prima_misura") or "SI"
+        self.checkbox(x + 52, y + 7.6, "SI", prima_misura == "SI", size=8)
+        self.checkbox(x + 66, y + 7.6, "NO", prima_misura == "NO", size=8)
         self.cell_at(x + 78, y + 5.0, 42, 3.2, "Norma di Riferimento:", size=8)
-        self.checkbox(x + 125, y + 7.6, "62-5", False, size=8)
-        self.checkbox(x + 151, y + 7.6, "62-148", True, size=8)
+        norma = self.ed.get("consip_norma_riferimento") or "62-148"
+        self.checkbox(x + 125, y + 7.6, "62-5", norma == "62-5", size=8)
+        self.checkbox(x + 151, y + 7.6, "62-148", norma == "62-148", size=8)
         self.cell_at(x + 78, y + 9.0, 86, 3.0, "Se 62-148, metodo di misura utilizzato:", size=8)
-        self.checkbox(x + 82, y + 15.2, "Differenziale", False, size=8)
-        self.checkbox(x + 116, y + 15.2, "Alternativo", False, size=8)
-        self.checkbox(x + 151, y + 15.2, "Diretto", True, size=8)
+        metodo = self.ed.get("consip_metodo_misura") or "Diretto"
+        self.checkbox(x + 82, y + 15.2, "Differenziale", metodo == "Differenziale", size=8)
+        self.checkbox(x + 116, y + 15.2, "Alternativo", metodo == "Alternativo", size=8)
+        self.checkbox(x + 151, y + 15.2, "Diretto", metodo == "Diretto", size=8)
         self.multicell_at(x + 2, y + 17.5, 44, 3.0, "Presenti fase di boot /\ncalibrazione motore?", size=8)
-        self.checkbox(x + 50, y + 22.0, "SI", False, size=8)
-        self.checkbox(x + 63, y + 22.0, "NO", True, size=8)
+        boot = self.ed.get("consip_boot_calibrazione") or "NO"
+        self.checkbox(x + 50, y + 22.0, "SI", boot == "SI", size=8)
+        self.checkbox(x + 63, y + 22.0, "NO", boot == "NO", size=8)
         self.cell_at(x + 78, y + 18.8, 66, 3.2, "Presenti cavi di terra supplementari?", size=8)
-        self.checkbox(x + 146, y + 22.0, "SI", False, size=8)
-        self.checkbox(x + 158, y + 22.0, "NO", True, size=8)
+        terra = self.ed.get("consip_cavi_terra_supplementari") or "NO"
+        self.checkbox(x + 146, y + 22.0, "SI", terra == "SI", size=8)
+        self.checkbox(x + 158, y + 22.0, "NO", terra == "NO", size=8)
         self.multicell_at(x + 2, y + 24.2, 44, 3.0, "Classe alimentazione di\nsicurezza 64.8:", size=8)
+        if self.ed.get("consip_classe_alimentazione_sicurezza"):
+            self.cell_at(x + 46, y + 25.4, 28, 3.2, self.ed.get("consip_classe_alimentazione_sicurezza", ""), size=8)
         self.cell_at(x + 78, y + 25.4, 66, 3.2, "Presente trasformatore isolamento?", size=8)
-        self.checkbox(x + 146, y + 28.6, "SI", False, size=8)
-        self.checkbox(x + 158, y + 28.6, "NO", True, size=8)
+        trasformatore = self.ed.get("consip_trasformatore_isolamento") or "NO"
+        self.checkbox(x + 146, y + 28.6, "SI", trasformatore == "SI", size=8)
+        self.checkbox(x + 158, y + 28.6, "NO", trasformatore == "NO", size=8)
         self.multicell_at(x + 2, y + 30.8, 44, 2.8, "Connessione diretta con nodo\ndel locale?", size=8)
-        self.checkbox(x + 50, y + 35.0, "SI", False, size=8)
-        self.checkbox(x + 63, y + 35.0, "NO", True, size=8)
+        nodo = self.ed.get("consip_connessione_nodo_locale") or "NO"
+        self.checkbox(x + 50, y + 35.0, "SI", nodo == "SI", size=8)
+        self.checkbox(x + 63, y + 35.0, "NO", nodo == "NO", size=8)
 
     def _section_visivo(self, x: float, y: float, w: float) -> None:
         row_h = 5.08
@@ -379,31 +389,48 @@ class ConsipVsePDF(FPDF):
     def _final_section(self, x: float, y: float, w: float) -> None:
         h = 69
         self.box(x, y, w, h)
-        self.line(x + 47, y, x + 47, y + h)
+        left_w = 54
+        self.line(x + left_w, y, x + left_w, y + h)
         self.line(x + 108, y + 42, x + 108, y + h)
-        self.line(x, y + 7, x + 47, y + 7)
-        self.cell_at(x + 7, y + 2, 34, 4, "VALUTAZIONE FINALE", style="I", size=9.5, align="C")
-        passed = self.data.get("overallStatus") == "Passed"
-        outcomes = [("CONFORME", passed), ("NON CONFORMITA'\nFORMALE", False), ("NON CONFORMITA'\nSOSTANZIALE", False), ("NON CONFORMITA' GRAVE", not passed)]
+        self.line(x, y + 7, x + left_w, y + 7)
+        self.cell_at(x + 7, y + 2, left_w - 14, 4, "VALUTAZIONE FINALE", style="I", size=9.5, align="C")
+        default_final = "CONFORME" if self.data.get("overallStatus") == "Passed" else "NON CONFORMITA GRAVE"
+        final_value = _norm_final(self.ed.get("consip_valutazione_finale") or default_final)
+        outcomes = [
+            ("CONFORME", "CONFORME"),
+            ("NON CONFORMITA' FORMALE", "NON CONFORMITA FORMALE"),
+            ("NON CONFORMITA' SOSTANZIALE", "NON CONFORMITA SOSTANZIALE"),
+            ("NON CONFORMITA' GRAVE", "NON CONFORMITA GRAVE"),
+        ]
         yy = y + 12
-        for label, checked in outcomes:
-            self.checkbox(x + 2, yy, label, checked, size=8.8)
+        for label, value in outcomes:
+            self.checkbox(x + 2, yy, label, final_value == value, size=7.8)
             yy += 9
-        self.cell_at(x + 49, y + 2, 108, 4, "Provvedimenti suggeriti per l'adeguamento / note:", size=9)
-        if self.ed.get("note"):
-            self.multicell_at(x + 50, y + 8, 116, 4, self.ed.get("note", ""), size=8.5)
+        self.cell_at(x + left_w + 2, y + 2, 108, 4, "Provvedimenti suggeriti per l'adeguamento / note:", size=9)
+        notes = self.ed.get("consip_provvedimenti_note") or self.ed.get("note") or ""
+        if notes:
+            self.multicell_at(x + left_w + 3, y + 8, w - left_w - 6, 4, notes, size=8.5)
         self.line(x, y + 42, x + w, y + 42)
         self.cell_at(x + 8, y + 44, 32, 4, "DATA COMPILAZIONE", style="I", size=8.5, align="C")
         self.cell_at(x + 58, y + 44, 42, 4, "Nome e Firma Tecnico Esecutore:", style="I", size=8.5, align="C")
         self.cell_at(x + 116, y + 44, 44, 4, "Nome e Firma Responsabile Verifiche:", style="I", size=8.5, align="C")
         self.line(x, y + 49, x + w, y + 49)
         self.cell_at(x + 18, y + 51, 24, 4, _date_slashes(self.data.get("testDate") or ""), size=9)
+        self._signature_block(x + 58, y + 50, 42, 15)
+        if str(self.ed.get("consip_copia_firma_responsabile") or "").upper() == "SI":
+            self._signature_block(x + 116, y + 50, 44, 15)
+
+    def _signature_block(self, x: float, y: float, w: float, h: float) -> None:
         firma = self.ed.get("firma_path", "")
+        tecnico = str(self.ed.get("tecnico") or "").strip()
+        image_h = 8.0
         if firma and Path(firma).exists():
             try:
-                self.image(firma, x=x + 61, y=y + 49, h=7)
+                self.image(firma, x=x + 2, y=y, w=w - 4, h=image_h)
             except Exception:
                 pass
+        if tecnico:
+            self.cell_at(x + 2, y + image_h + 1.2, w - 4, 3.5, tecnico.upper(), size=7.8, align="C")
 
     def _find_measure(self, *needles: str) -> dict[str, Any] | None:
         lowered = [needle.lower() for needle in needles]
@@ -456,6 +483,12 @@ def _norm(value: object) -> str:
 
 def _clean(value: object) -> str:
     return str(value or "").replace("°", "deg").replace("–", "-")
+
+
+def _norm_final(value: object) -> str:
+    text = str(value or "").upper().replace("'", "")
+    text = re.sub(r"[^A-Z ]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _dmy(value: object) -> str:

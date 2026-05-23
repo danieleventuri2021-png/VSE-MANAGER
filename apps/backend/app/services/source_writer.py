@@ -20,6 +20,15 @@ SAFE_FIELDS = {
     "reparto": ("reparto", "department"),
 }
 
+DTA_FIELDS = {
+    "produttore": "DUTMANF",
+    "modello": "DUTMODEL",
+    "matricola": "DUTSN",
+    "inventario": "DUTEQUIPNUM",
+    "descrizione": "OTHER",
+    "stanza": "DUTLOC",
+}
+
 
 def save_to_source(path: str | Path, updates: dict, backup_root: str | Path) -> dict:
     source = Path(path)
@@ -30,6 +39,8 @@ def save_to_source(path: str | Path, updates: dict, backup_root: str | Path) -> 
     try:
         if source.suffix.lower() == ".csv":
             changed = _save_csv(source, updates)
+        elif source.suffix.lower() == ".dta":
+            changed = _save_dta(source, updates)
         else:
             changed = _save_xml_or_text_mtr(source, updates)
     except Exception:
@@ -128,6 +139,25 @@ def _save_xml(source: Path, updates: dict) -> list[str]:
 
 def _save_csv(source: Path, updates: dict) -> list[str]:
     return _save_key_value_text(source, updates, separators=r"[:=;,]")
+
+
+def _save_dta(source: Path, updates: dict) -> list[str]:
+    lines = source.read_text(encoding="utf-8", errors="ignore").splitlines()
+    changed = []
+    output = []
+    for line in lines:
+        new_line = line
+        for field, dta_key in DTA_FIELDS.items():
+            if field not in updates:
+                continue
+            pattern = rf"^({re.escape(dta_key)}=)(.*)$"
+            if re.match(pattern, line, flags=re.IGNORECASE):
+                new_line = re.sub(pattern, rf"\g<1>{updates[field]}", line, flags=re.IGNORECASE)
+                changed.append(field)
+                break
+        output.append(new_line)
+    _atomic_write_text(source, "\n".join(output) + "\n")
+    return changed
 
 
 def _save_key_value_text(source: Path, updates: dict, separators: str = r"[:=]") -> list[str]:

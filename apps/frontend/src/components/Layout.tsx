@@ -11,7 +11,7 @@ const items: { id: View; label: string; icon: React.ComponentType<{ size?: numbe
   { id: "import", label: "Importazione", icon: FileInput },
   { id: "matches", label: "Abbinamenti", icon: Link2 },
   { id: "job-settings", label: "Impostazioni lavoro", icon: SlidersHorizontal },
-  { id: "review", label: "Revisione MTR/CSV", icon: ClipboardCheck },
+  { id: "review", label: "Revisione MTR/CSV/DTA", icon: ClipboardCheck },
   { id: "pdf", label: "PDF", icon: FileText },
   { id: "registry", label: "Archivio", icon: Database },
   { id: "anomalies", label: "Anomalie", icon: AlertTriangle },
@@ -27,7 +27,7 @@ export function Layout({ view, setView, user, onLogout, children }: { view: View
           <Activity className="text-action" size={24} />
           <div>
             <div className="text-sm font-semibold uppercase tracking-wide text-action">gestione-vse</div>
-            <div className="text-xs text-slate-500">VSE / MTR/CSV locale</div>
+            <div className="text-xs text-slate-500">VSE / MTR/CSV/DTA locale</div>
           </div>
         </div>
         <nav className="grid gap-1 p-3">
@@ -51,7 +51,7 @@ export function Layout({ view, setView, user, onLogout, children }: { view: View
         <header className="flex h-16 items-center justify-between border-b border-line bg-white px-5">
           <div>
             <h1 className="text-lg font-semibold text-ink">Gestione verifiche elettriche</h1>
-            <p className="text-xs text-slate-500">Import Excel, analisi MTR/CSV, anomalie e rinomina controllata</p>
+            <p className="text-xs text-slate-500">Import Excel, analisi MTR/CSV/DTA, anomalie e rinomina controllata</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">

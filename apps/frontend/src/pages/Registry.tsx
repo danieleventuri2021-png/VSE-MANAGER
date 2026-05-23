@@ -200,7 +200,7 @@ function RegistryReport({ report }: { report: any }) {
         <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">
           <div className="mb-1 font-medium">Elementi non inseriti</div>
           <ul className="grid gap-1 text-xs">
-            {skipped.map((item: any, index: number) => <li key={index}>MTR/CSV #{item.file_mtr_id || "-"}: {item.reason || "motivo non indicato"}</li>)}
+            {skipped.map((item: any, index: number) => <li key={index}>MTR/CSV/DTA #{item.file_mtr_id || "-"}: {item.reason || "motivo non indicato"}</li>)}
           </ul>
         </div>
       )}

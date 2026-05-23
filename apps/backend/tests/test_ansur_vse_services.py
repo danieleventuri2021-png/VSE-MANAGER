@@ -5,6 +5,7 @@ import uuid
 from app.services.ansur_parser import parse_ansur_mtr
 from app.services.ansur_template_detector import is_permanent_three_measure_template
 from app.services.csv_parser import parse_esa615_csv
+from app.services.dta_parser import parse_esa615_dta
 from app.services.measurement_indexer import build_measurement_index
 from app.services.measurement_selector import find_worst_protective_earth
 from app.services.mtr_parser import parse_mtr_file
@@ -214,6 +215,76 @@ def test_pdf_filename_and_generation_without_header():
     generated = generate_vse_pdf({"tipologia": "Monitor", "matricola": "SN1", "produttore": "Acme", "modello": "X1", "tecnico": "Mario"}, tmp_path)
     assert Path(generated["path"]).exists()
     assert Path(generated["path"]).read_bytes().startswith(b"%PDF")
+    shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_parse_esa615_dta_report_format():
+    tmp_path = workdir()
+    path = tmp_path / "0018-mac 400.dta"
+    path.write_text(
+        """<HEADER>
+DATEOFTEST=2026/04/13
+TIMEOFTEST=09:55
+ESA615SN=7013015
+ESA615UIFW=3.01.03
+ESA615CALDATE=M10D17Y2025
+ESA615CALTECH=SLT
+DUTEQUIPNUM=0018
+DUTSN=sct08191531pa
+DUTMANF=ge
+DUTMODEL=mac 400
+DUTLOC=amb l
+OTHER=
+TESTDURATION=81
+MASTERFILE=IEC62353-Diretto Classe1-CF
+STANDARD=IEC62353-Direct
+CLASSIFICATION=I
+APTYPE=CF,,,,
+<\\HEADER>
+<BODY>
+<TEST=PERE>
+0.3,-,O0.119,P
+<\\TEST>
+<TEST=INSM-PE>
+-,-,M9.6,-
+<\\TEST>
+<TEST=VOLTSLN>
+-,-,V223.2,-
+<\\TEST>
+<TEST=EQUIP>
+-,-,A0.0,-
+<\\TEST>
+<TESTAP=DIRL-ACDC-PNEONC>
+Funz.1,500,-,U80.3,P
+<\\TESTAP>
+<TESTAP=DIRL-ACDC-PREONC>
+Funz.1,500,-,U68.5,P
+<\\TESTAP>
+<\\BODY>
+""",
+        encoding="utf-8",
+    )
+    normalized = parse_esa615_dta(path)
+    assert normalized["source_type"] == "dta"
+    assert normalized["dut"]["inventory"] == "0018"
+    assert normalized["dut"]["serial_number"] == "sct08191531pa"
+    assert normalized["dut"]["manufacturer"] == "ge"
+    assert normalized["ansur"]["template_name"] == "IEC62353-Diretto Classe1-CF"
+    assert normalized["ansur"]["electrical_class"] == "I"
+    assert normalized["ansur"]["applied_part_type"] == "CF"
+    assert normalized["test"]["date"] == "2026-04-13T09:55"
+    assert normalized["instrument"]["serial_number"] == "7013015"
+    assert normalized["instrument"]["calibration_date"] == "2025-10-17"
+    assert [item["value"] for item in normalized["measurements"]] == ["0.119", "9.6", "223.2", "0.0", "80.3", "68.5"]
+    assert normalized["measurements"][0]["unit"] == "ohm"
+    assert normalized["measurements"][0]["result"] == "PASS"
+
+    parsed = parse_mtr_file(path)
+    assert parsed["normalized"]["source_type"] == "dta"
+    assert parsed["inventario"] == "0018"
+    assert parsed["matricola"] == "sct08191531pa"
+    assert parsed["template_ansur"] == "IEC62353-Diretto Classe1-CF"
+    assert len(parsed["misure"]) == 6
     shutil.rmtree(tmp_path, ignore_errors=True)
 
 

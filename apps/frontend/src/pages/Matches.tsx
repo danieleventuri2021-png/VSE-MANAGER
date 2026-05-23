@@ -41,7 +41,7 @@ export function Matches({ jobs }: { jobs: Job[] }) {
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2">Riga</th><th>Matricola</th><th>Produttore</th><th>Modello</th><th>MTR/CSV</th><th>Stato</th><th>Score</th></tr></thead>
+          <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2">Riga</th><th>Matricola</th><th>Produttore</th><th>Modello</th><th>MTR/CSV/DTA</th><th>Stato</th><th>Score</th></tr></thead>
           <tbody>
             {rows.map((row, index) => {
               const expandable = row.status !== "certo" || row.differences?.fields?.length > 0;
@@ -68,7 +68,7 @@ export function Matches({ jobs }: { jobs: Job[] }) {
             })}
           </tbody>
         </table>
-        {!loading && jobId > 0 && rows.length === 0 && <p className="border-t border-line py-4 text-sm text-slate-500">Nessun abbinamento disponibile. Importa Excel/MTR/CSV e avvia Analizza per questo lavoro.</p>}
+        {!loading && jobId > 0 && rows.length === 0 && <p className="border-t border-line py-4 text-sm text-slate-500">Nessun abbinamento disponibile. Importa Excel/MTR/CSV/DTA e avvia Analizza per questo lavoro.</p>}
       </div>
     </Panel>
   );
@@ -112,8 +112,8 @@ function MatchDetail({
         <GitCompare size={16} />
         <span className="font-medium">{row.reason || "Dettaglio abbinamento"}</span>
       </div>
-      {row.status === "mancante" && <Notice text="Questa riga Excel non ha un file MTR/CSV associato con sufficiente confidenza." />}
-      {row.status === "mtr_orfano" && <Notice text="Questo file MTR/CSV non è stato collegato ad alcuna riga Excel." />}
+      {row.status === "mancante" && <Notice text="Questa riga Excel non ha un file MTR/CSV/DTA associato con sufficiente confidenza." />}
+      {row.status === "mtr_orfano" && <Notice text="Questo file MTR/CSV/DTA non è stato collegato ad alcuna riga Excel." />}
       {row.registry_match && (
         <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sky-900">
           <div className="font-medium">Possibile apparecchiatura gia presente in archivio</div>
@@ -125,7 +125,7 @@ function MatchDetail({
       {fields.length > 0 ? (
         <div className="overflow-x-auto rounded-md border border-line bg-white">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-100 uppercase text-slate-500"><tr><th className="p-2">Campo</th><th>Excel</th><th>MTR/CSV</th><th>Allinea</th></tr></thead>
+            <thead className="bg-slate-100 uppercase text-slate-500"><tr><th className="p-2">Campo</th><th>Excel</th><th>MTR/CSV/DTA</th><th>Allinea</th></tr></thead>
             <tbody>
               {fields.map((field: any) => {
                 const key = choiceKey(rowIndex, field.field);
@@ -139,17 +139,17 @@ function MatchDetail({
                     <div className="flex flex-wrap gap-2">
                       <button
                         className={`inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs ${choice === "mtr_from_excel" ? "border-action bg-blue-50 text-action" : "border-line bg-white"}`}
-                        title="Aggiorna MTR/CSV con il valore Excel"
+                        title="Aggiorna MTR/CSV/DTA con il valore Excel"
                         onClick={() => setChoices({ ...choices, [key]: "mtr_from_excel" })}
                       >
-                        Excel <ArrowRight size={14} /> MTR/CSV
+                        Excel <ArrowRight size={14} /> MTR/CSV/DTA
                       </button>
                       <button
                         className={`inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs ${choice === "excel_from_mtr" ? "border-action bg-blue-50 text-action" : "border-line bg-white"}`}
-                        title="Aggiorna Excel/database con il valore MTR/CSV"
+                        title="Aggiorna Excel/database con il valore MTR/CSV/DTA"
                         onClick={() => setChoices({ ...choices, [key]: "excel_from_mtr" })}
                       >
-                        Excel <ArrowLeft size={14} /> MTR/CSV
+                        Excel <ArrowLeft size={14} /> MTR/CSV/DTA
                       </button>
                     </div>
                   </td>
@@ -162,7 +162,7 @@ function MatchDetail({
       ) : (
         <div className="grid gap-2 rounded-md border border-line bg-white p-3 sm:grid-cols-2">
           <DataBlock title="Excel" data={row.equipment} />
-          <DataBlock title="MTR/CSV" data={row.mtr} />
+          <DataBlock title="MTR/CSV/DTA" data={row.mtr} />
         </div>
       )}
       {fields.length > 0 && (

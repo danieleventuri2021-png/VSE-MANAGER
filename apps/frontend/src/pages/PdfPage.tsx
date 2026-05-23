@@ -82,7 +82,7 @@ export function PdfPage({ jobs }: { jobs: Job[] }) {
       </Panel>
       <Panel title="PDF generati">
         <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr><th className="py-2">Nome</th><th>Modello</th><th>Esito</th><th>Percorso server</th><th className="text-right">Download</th></tr></thead><tbody>{pdfs.map((pdf) => <tr className="border-t border-line" key={pdf.id}><td className="py-2">{pdf.nome_pdf}</td><td>{pdf.template_pdf === "consip" ? "CONSIP" : "Generico"}</td><td>{pdf.esito}</td><td className="break-all">{pdf.percorso_pdf}</td><td className="text-right"><button className="inline-flex h-8 items-center gap-2 rounded-md border border-line px-2 text-xs disabled:cursor-not-allowed disabled:opacity-60" onClick={() => downloadGeneratedPdf(jobId, pdf.id, pdf.nome_pdf)} disabled={!jobId || pdf.esito !== "generato"}><Download size={14} /> Scarica</button></td></tr>)}</tbody></table></div>
-        <p className="mt-3 text-xs text-slate-500">File MTR/CSV nel lavoro: {files.length}</p>
+        <p className="mt-3 text-xs text-slate-500">File MTR/CSV/DTA nel lavoro: {files.length}</p>
       </Panel>
     </div>
   );
@@ -121,7 +121,7 @@ function IssueList({ title, rows, tone }: { title: string; rows: any[]; tone: "w
     <div className={`mt-3 rounded-md border p-3 ${colors}`}>
       <div className="mb-1 font-medium">{title}</div>
       <ul className="grid gap-1 text-xs">
-        {rows.map((item, index) => <li key={index}>MTR/CSV #{item.file_mtr_id || "-"}: {item.error || item.reason || item.message || "dettaglio non indicato"}</li>)}
+        {rows.map((item, index) => <li key={index}>MTR/CSV/DTA #{item.file_mtr_id || "-"}: {item.error || item.reason || item.message || "dettaglio non indicato"}</li>)}
       </ul>
     </div>
   );

@@ -61,11 +61,21 @@ def registry_match_score(row: RegistroApparecchiatura, data: dict[str, Any]) -> 
         return {"score": 100, "reason": "matricola/seriale gia presente in archivio"}
     if inventories & incoming_inventories:
         return {"score": 96, "reason": "INVGEST/inventario gia presente in archivio"}
-    descriptor_fields = ("tipologia", "produttore", "modello")
-    descriptor_matches = sum(1 for field in descriptor_fields if normalize_text(getattr(row, field, "")) and normalize_text(getattr(row, field, "")) == normalize_text(data.get(field)))
-    if descriptor_matches == len(descriptor_fields) and (incoming_serials or incoming_inventories):
-        return {"score": 90, "reason": "tipologia, marca e modello uguali con identificativo disponibile"}
     return {"score": 0, "reason": "nessuna corrispondenza archivio"}
+
+
+def registry_identity_match_score(row: RegistroApparecchiatura, data: dict[str, Any]) -> dict[str, Any]:
+    serials = {normalize_identifier(value) for value in (row.matricola, row.seriale, row.identificativo) if value}
+    incoming_serials = {normalize_identifier(value) for value in (data.get("matricola"), data.get("seriale"), data.get("identificativo")) if value}
+    inventories = {normalize_identifier(row.inventario_gestionale), normalize_identifier(row.inventario_ente)}
+    incoming_inventories = {normalize_identifier(data.get("inventario_gestionale")), normalize_identifier(data.get("inventario_ente"))}
+    inventories.discard("")
+    incoming_inventories.discard("")
+    if serials & incoming_serials:
+        return {"score": 100, "reason": "matricola/seriale uguale"}
+    if inventories & incoming_inventories:
+        return {"score": 96, "reason": "inventario uguale"}
+    return {"score": 0, "reason": "nessuna identita certa"}
 
 
 def registry_data_from_pdf_data(job: LavoroVse, file_mtr: FileMtr, verification: VerificaVse | None, data: dict) -> dict:

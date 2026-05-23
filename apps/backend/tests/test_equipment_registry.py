@@ -1,7 +1,7 @@
 from datetime import date
 from types import SimpleNamespace
 
-from app.services.equipment_registry_service import add_months, build_registry_ics, parse_periodicity_months, registry_data_from_pdf_data, registry_match_score
+from app.services.equipment_registry_service import add_months, build_registry_ics, parse_periodicity_months, registry_data_from_pdf_data, registry_identity_match_score, registry_match_score
 
 
 def test_periodicity_and_next_due_date():
@@ -34,3 +34,10 @@ def test_registry_match_uses_inventory_when_serial_changes():
     match = registry_match_score(row, incoming)
     assert match["score"] >= 90
     assert "INVGEST" in match["reason"]
+
+
+def test_registry_identity_match_does_not_use_only_same_model():
+    row = SimpleNamespace(matricola="SN1", seriale="SN1", identificativo="SN1", inventario_gestionale="", inventario_ente="", tipologia="Letto", produttore="Chinesport", modello="X")
+    incoming = {"matricola": "SN2", "seriale": "SN2", "identificativo": "SN2", "inventario_gestionale": "", "inventario_ente": "", "tipologia": "Letto", "produttore": "Chinesport", "modello": "X"}
+    assert registry_match_score(row, incoming)["score"] == 0
+    assert registry_identity_match_score(row, incoming)["score"] == 0

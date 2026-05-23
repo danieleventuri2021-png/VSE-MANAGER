@@ -40,12 +40,13 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
     setBusy(true);
     setError("");
     try {
-      await importMtrFolder(jobId, folder);
-      setMessage("Cartella MTR/CSV scansionata");
-      setOperationSummary(null);
+      const job = await importMtrFolder(jobId, folder);
+      const skipped = Number(job.summary.mtr_duplicates_skipped || 0);
+      setMessage(skipped ? `Cartella scansionata: ${skipped} misura gia presente non inserita` : "Cartella MTR/CSV/DTA scansionata");
+      setOperationSummary({ type: "mtr", ...job.summary });
       onDone();
     } catch (err: any) {
-      setError(describeError(err, "Scansione cartella MTR/CSV non riuscita."));
+      setError(describeError(err, "Scansione cartella MTR/CSV/DTA non riuscita."));
     } finally {
       setBusy(false);
     }
@@ -56,12 +57,13 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
     setBusy(true);
     setError("");
     try {
-      await uploadMtrFiles(jobId, mtrFiles);
-      setMessage(`Caricati ${mtrFiles.length} file MTR/CSV/ZIP`);
-      setOperationSummary(null);
+      const job = await uploadMtrFiles(jobId, mtrFiles);
+      const skipped = Number(job.summary.mtr_duplicates_skipped || 0);
+      setMessage(skipped ? `Upload completato: ${skipped} misura gia presente non inserita` : `Caricati ${mtrFiles.length} file MTR/CSV/DTA/ZIP`);
+      setOperationSummary({ type: "mtr", ...job.summary });
       onDone();
     } catch (err: any) {
-      setError(describeError(err, "Upload MTR/CSV non riuscito."));
+      setError(describeError(err, "Upload MTR/CSV/DTA non riuscito."));
     } finally {
       setBusy(false);
     }
@@ -113,18 +115,18 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
           <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runExcel} disabled={busy || !jobId || !file}><FileSpreadsheet size={18} /> Importa Excel</button>
         </div>
       </Panel>
-      <Panel title="Scansione MTR/CSV">
+      <Panel title="Scansione MTR/CSV/DTA">
         <div className="grid gap-3">
           <input
             className="text-sm"
             type="file"
             multiple
-            accept=".mtr,.MTR,.csv,.CSV,.zip,application/zip"
+            accept=".mtr,.MTR,.csv,.CSV,.dta,.DTA,.zip,application/zip"
             onChange={(event) => setMtrFiles(Array.from(event.target.files ?? []))}
             disabled={busy}
           />
           <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtrUpload} disabled={busy || !jobId || mtrFiles.length === 0}>
-            <Upload size={18} /> Carica MTR/CSV/ZIP
+            <Upload size={18} /> Carica MTR/CSV/DTA/ZIP
           </button>
           <div className="flex items-center gap-2 pt-2 text-xs font-medium uppercase text-slate-500">
             <Archive size={14} /> Cartella sul server
@@ -141,8 +143,8 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
       </Panel>
       <Panel title="Analisi e applicazione">
         <div className="mb-3 grid gap-2 rounded-md border border-line bg-slate-50 p-3 text-sm text-slate-700">
-          <p><strong>Analizza</strong> confronta le righe Excel con i file MTR/CSV, crea gli abbinamenti e segnala mancanti, orfani e differenze da controllare.</p>
-          <p><strong>Applica modifiche</strong> scrive nei sorgenti MTR/CSV i dati confermati e rinomina i file, creando prima un backup.</p>
+          <p><strong>Analizza</strong> confronta le righe Excel con i file MTR/CSV/DTA, crea gli abbinamenti e segnala mancanti, orfani e differenze da controllare.</p>
+          <p><strong>Applica modifiche</strong> scrive nei sorgenti MTR/CSV/DTA i dati confermati e rinomina i file, creando prima un backup.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60" onClick={runAnalyze} disabled={busy || !jobId}><Play size={18} /> Analizza</button>
@@ -152,12 +154,42 @@ export function ImportPage({ jobs, onDone }: { jobs: Job[]; onDone: () => void }
         {message && <p className="mt-3 text-sm text-action">{message}</p>}
         {error && <p className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       </Panel>
-      {mtrPickerOpen && <FolderPicker initialPath={folder} title="Seleziona cartella MTR/CSV" onSelect={(path) => { setFolder(path); setMtrPickerOpen(false); }} onClose={() => setMtrPickerOpen(false)} />}
+      {mtrPickerOpen && <FolderPicker initialPath={folder} title="Seleziona cartella MTR/CSV/DTA" onSelect={(path) => { setFolder(path); setMtrPickerOpen(false); }} onClose={() => setMtrPickerOpen(false)} />}
     </div>
   );
 }
 
 function OperationSummary({ summary }: { summary: Record<string, any> }) {
+  if (summary.type === "mtr") {
+    const details = Array.isArray(summary.mtr_duplicate_details) ? summary.mtr_duplicate_details : [];
+    return (
+      <div className="mt-3 grid gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+        <div className="flex items-center gap-2 font-medium"><ShieldAlert size={16} /> Import MTR/CSV/DTA</div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Metric label="File letti" value={summary.mtr_files_scanned ?? 0} />
+          <Metric label="File inseriti" value={summary.mtr_files ?? 0} />
+          <Metric label="Duplicati saltati" value={summary.mtr_duplicates_skipped ?? 0} />
+        </div>
+        {details.length > 0 && (
+          <div className="max-h-40 overflow-auto rounded-md border border-amber-200 bg-white/70">
+            <table className="w-full text-left text-xs">
+              <thead className="text-amber-800"><tr><th className="p-2">File</th><th>Identificativo</th><th>Data</th><th>Motivo</th></tr></thead>
+              <tbody>
+                {details.map((item: any, index: number) => (
+                  <tr key={`${item.nome_file}-${index}`} className="border-t border-amber-100">
+                    <td className="p-2">{item.nome_file || "-"}</td>
+                    <td>{item.identificativo || "-"}</td>
+                    <td>{item.data_verifica || "-"}</td>
+                    <td>{item.reason || "gia presente"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
   if (summary.type === "apply") {
     return (
       <div className="mt-3 grid gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
@@ -173,7 +205,7 @@ function OperationSummary({ summary }: { summary: Record<string, any> }) {
     { label: "Certi", value: summary.certo ?? 0, icon: CheckCircle2, tone: "text-emerald-700" },
     { label: "Da controllare", value: summary.da_controllare ?? 0, icon: ShieldAlert, tone: "text-amber-700" },
     { label: "Mancanti", value: summary.mancante ?? 0, icon: ShieldAlert, tone: "text-rose-700" },
-    { label: "MTR/CSV orfani", value: summary.mtr_orfano ?? 0, icon: Archive, tone: "text-sky-700" },
+    { label: "MTR/CSV/DTA orfani", value: summary.mtr_orfano ?? 0, icon: Archive, tone: "text-sky-700" },
     { label: "Differenze", value: summary.differenze ?? 0, icon: GitCompare, tone: "text-slate-700" },
   ];
   const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0) || 1;
