@@ -211,11 +211,18 @@ def test_merge_precedence_manual_over_defaults():
 def test_pdf_filename_and_generation_without_header():
     tmp_path = workdir()
     name = build_pdf_filename({"tipologia": "Monitor", "matricola": "SN 1", "produttore": "Acme", "modello": "X1"})
-    assert name == "Monitor-Acme-X1-SN_1.pdf"
+    assert name == "Monitor-Acme-X1-SN_1-generico.pdf"
     generated = generate_vse_pdf({"tipologia": "Monitor", "matricola": "SN1", "produttore": "Acme", "modello": "X1", "tecnico": "Mario"}, tmp_path)
+    assert generated["filename"].endswith("-generico.pdf")
     assert Path(generated["path"]).exists()
     assert Path(generated["path"]).read_bytes().startswith(b"%PDF")
     shutil.rmtree(tmp_path, ignore_errors=True)
+
+
+def test_pdf_filename_includes_template_suffix():
+    data = {"tipologia": "Monitor", "matricola": "SN 1", "produttore": "Acme", "modello": "X1"}
+    assert build_pdf_filename(data, "standard") == "Monitor-Acme-X1-SN_1-generico.pdf"
+    assert build_pdf_filename(data, "consip") == "Monitor-Acme-X1-SN_1-consip.pdf"
 
 
 def test_parse_esa615_dta_report_format():
@@ -305,6 +312,7 @@ def test_consip_pdf_generation_uses_consip_template():
         template_pdf="consip",
     )
     assert generated["template_pdf"] == "consip"
+    assert generated["filename"].endswith("-consip.pdf")
     assert Path(generated["path"]).exists()
     assert Path(generated["path"]).read_bytes().startswith(b"%PDF")
     shutil.rmtree(tmp_path, ignore_errors=True)

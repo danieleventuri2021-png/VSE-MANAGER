@@ -13,13 +13,14 @@ from app.services.esa615_legacy_adapter import (
 from app.services.consip_pdf_generator import generate_consip_pdf
 
 
-def build_pdf_filename(data: dict) -> str:
+def build_pdf_filename(data: dict, template_pdf: str = "standard") -> str:
     legacy = to_legacy_edited(data)
     tip = sanitize_filename_legacy(legacy.get("tipologia", "") or "apparecchio")
     mfg = sanitize_filename_legacy(legacy.get("manufacturer", "") or "produttore")
     mod = sanitize_filename_legacy(legacy.get("model", "") or "modello")
     ser = sanitize_filename_legacy(legacy.get("serial", "") or "matricola")
-    return f"{tip}-{mfg}-{mod}-{ser}.pdf"
+    suffix = "consip" if _normalize_template_pdf(template_pdf) == "consip" else "generico"
+    return f"{tip}-{mfg}-{mod}-{ser}-{suffix}.pdf"
 
 
 def generate_vse_pdf(data: dict, output_dir: str | Path, template_pdf: str = "standard", header_image: str | None = None) -> dict:
@@ -27,9 +28,9 @@ def generate_vse_pdf(data: dict, output_dir: str | Path, template_pdf: str = "st
     output.mkdir(parents=True, exist_ok=True)
     legacy_data = _pdf_ready_data(to_legacy_data(data))
     legacy_edited = _pdf_ready_edited(apply_template_defaults_legacy(legacy_data, to_legacy_edited(data)))
-    filename = build_pdf_filename({**data, **legacy_edited})
-    path = output / filename
     normalized_template = _normalize_template_pdf(template_pdf)
+    filename = build_pdf_filename({**data, **legacy_edited}, normalized_template)
+    path = output / filename
     if normalized_template == "consip":
         generate_consip_pdf(legacy_data, legacy_edited, path, header_image=header_image)
     else:
