@@ -21,7 +21,6 @@ const items: { id: View; label: string; icon: React.ComponentType<{ size?: numbe
 ];
 
 const simpleItems: { id: View; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
-  { id: "new", label: "Nuovo lavoro", icon: Plus },
   { id: "import", label: "Importazione", icon: FileInput },
   { id: "review", label: "Revisione MTR/CSV/DTA", icon: ClipboardCheck },
   { id: "pdf", label: "PDF", icon: FileText },

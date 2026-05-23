@@ -87,6 +87,14 @@ export function ReviewMtr({ jobs, mode = "full" }: { jobs: Job[]; mode?: "full" 
   const isConsip = (selectedJob?.template_pdf || "").toLowerCase() === "consip";
   const activeGroups = isConsip ? consipFieldGroups : genericFieldGroups;
 
+  useEffect(() => {
+    if ((!jobId || !jobs.some((job) => job.id === jobId)) && jobs[0]) {
+      setJobId(jobs[0].id);
+      setSelected(0);
+      setDetail(null);
+    }
+  }, [jobs, jobId]);
+
   async function loadList() {
     if (!jobId) return;
     setLoadingList(true);
@@ -140,10 +148,16 @@ export function ReviewMtr({ jobs, mode = "full" }: { jobs: Job[]; mode?: "full" 
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
       <Panel title="MTR/CSV/DTA del lavoro" action={<RefreshButton loading={loadingList} onClick={loadList} />}>
-        <select className="mb-3 h-10 w-full rounded-md border border-line px-3 text-sm" value={jobId} onChange={(event) => setJobId(Number(event.target.value))}>
-          <option value={0}>Seleziona lavoro</option>
-          {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
-        </select>
+        {(mode === "full" || jobs.length > 1) ? (
+          <select className="mb-3 h-10 w-full rounded-md border border-line px-3 text-sm" value={jobId} onChange={(event) => setJobId(Number(event.target.value))}>
+            <option value={0}>Seleziona lavoro</option>
+            {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
+          </select>
+        ) : jobs[0] ? (
+          <div className="mb-3 rounded-md border border-line bg-slate-50 p-3 text-sm font-medium">{jobs[0].id} - {jobs[0].titolo}</div>
+        ) : (
+          <div className="mb-3 rounded-md border border-line bg-slate-50 p-3 text-sm text-slate-600">Carica prima i file dalla pagina Importazione.</div>
+        )}
         <div className="grid gap-2">
           {items.map((item) => (
             <button key={item.file_mtr_id} className={`rounded-md border p-3 text-left text-sm ${selected === item.file_mtr_id ? "border-action bg-blue-50" : "border-line bg-white"}`} onClick={() => setSelected(item.file_mtr_id)}>

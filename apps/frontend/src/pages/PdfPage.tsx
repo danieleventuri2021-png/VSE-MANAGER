@@ -1,5 +1,5 @@
 import { AlertCircle, Archive, CheckCircle2, Download, FileText, LoaderCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { downloadAllGeneratedPdfs, downloadGeneratedPdf, generateAllPdfs, getReview, listPdfs, saveJobSettings, type Job } from "../api/client";
 import { Panel } from "../components/Panel";
 import { RefreshButton } from "../components/RefreshButton";
@@ -12,6 +12,15 @@ export function PdfPage({ jobs, mode = "full", onChanged }: { jobs: Job[]; mode?
   const [status, setStatus] = useState<"idle" | "running" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if ((!jobId || !jobs.some((job) => job.id === jobId)) && jobs[0]) {
+      setJobId(jobs[0].id);
+      setFiles([]);
+      setPdfs([]);
+      setReport(null);
+    }
+  }, [jobs, jobId]);
 
   async function refresh() {
     if (!jobId) return;
@@ -56,10 +65,16 @@ export function PdfPage({ jobs, mode = "full", onChanged }: { jobs: Job[]; mode?
     <div className="grid gap-4">
       <Panel title="Generazione PDF" action={<RefreshButton loading={refreshing} onClick={refresh} />}>
         <div className="flex flex-wrap gap-3">
-          <select className="h-10 rounded-md border border-line px-3 text-sm" value={jobId} onChange={(event) => setJobId(Number(event.target.value))}>
-            <option value={0}>Seleziona lavoro</option>
-            {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
-          </select>
+          {(mode === "full" || jobs.length > 1) ? (
+            <select className="h-10 rounded-md border border-line px-3 text-sm" value={jobId} onChange={(event) => setJobId(Number(event.target.value))}>
+              <option value={0}>Seleziona lavoro</option>
+              {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
+            </select>
+          ) : jobs[0] ? (
+            <div className="inline-flex h-10 items-center rounded-md border border-line bg-slate-50 px-3 text-sm font-medium text-ink">{jobs[0].id} - {jobs[0].titolo}</div>
+          ) : (
+            <div className="inline-flex h-10 items-center rounded-md border border-line bg-slate-50 px-3 text-sm text-slate-600">Carica prima i file da Importazione</div>
+          )}
           {jobId > 0 && <div className="inline-flex h-10 items-center rounded-md border border-line bg-slate-50 px-3 text-sm text-ink">{modelLabel}</div>}
           {mode === "simple" && jobId > 0 && (
             <select className="h-10 rounded-md border border-line px-3 text-sm" value={selectedJob?.template_pdf || "standard"} onChange={(event) => updateTemplate(event.target.value)}>

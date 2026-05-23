@@ -1,6 +1,6 @@
 import { Archive, CheckCircle2, FileSpreadsheet, FolderOpen, GitCompare, Play, ShieldAlert, Upload, Wand2 } from "lucide-react";
-import { useState } from "react";
-import { analyzeJob, applyJob, importMtrFolder, uploadExcel, uploadMtrFiles, type Job } from "../api/client";
+import { useEffect, useState } from "react";
+import { analyzeJob, applyJob, createJob, importMtrFolder, uploadExcel, uploadMtrFiles, type Job } from "../api/client";
 import { FolderPicker } from "../components/FolderPicker";
 import { Panel } from "../components/Panel";
 
@@ -19,6 +19,21 @@ export function ImportPage({ jobs, mode = "full", onDone }: { jobs: Job[]; mode?
     return err?.response?.data?.detail || err?.message || fallback;
   }
 
+  async function effectiveJobId() {
+    if (jobId) return jobId;
+    if (mode !== "simple") return 0;
+    const job = await createJob({ titolo: "Generazione PDF", workflow_mode: "simple" });
+    setJobId(job.id);
+    onDone();
+    return job.id;
+  }
+
+  useEffect(() => {
+    if ((!jobId || !jobs.some((job) => job.id === jobId)) && jobs[0]) {
+      setJobId(jobs[0].id);
+    }
+  }, [jobs, jobId]);
+
   async function runExcel() {
     if (!jobId || !file || busy) return;
     setBusy(true);
@@ -36,11 +51,13 @@ export function ImportPage({ jobs, mode = "full", onDone }: { jobs: Job[]; mode?
   }
 
   async function runMtr() {
-    if (!jobId || !folder || busy) return;
+    if ((!jobId && mode !== "simple") || !folder || busy) return;
     setBusy(true);
     setError("");
     try {
-      const job = await importMtrFolder(jobId, folder);
+      const currentJobId = await effectiveJobId();
+      if (!currentJobId) return;
+      const job = await importMtrFolder(currentJobId, folder);
       const skipped = Number(job.summary.mtr_duplicates_skipped || 0);
       setMessage(skipped ? `Cartella scansionata: ${skipped} misura gia presente non inserita` : "Cartella MTR/CSV/DTA scansionata");
       setOperationSummary({ type: "mtr", ...job.summary });
@@ -53,11 +70,13 @@ export function ImportPage({ jobs, mode = "full", onDone }: { jobs: Job[]; mode?
   }
 
   async function runMtrUpload() {
-    if (!jobId || mtrFiles.length === 0 || busy) return;
+    if ((!jobId && mode !== "simple") || mtrFiles.length === 0 || busy) return;
     setBusy(true);
     setError("");
     try {
-      const job = await uploadMtrFiles(jobId, mtrFiles);
+      const currentJobId = await effectiveJobId();
+      if (!currentJobId) return;
+      const job = await uploadMtrFiles(currentJobId, mtrFiles);
       const skipped = Number(job.summary.mtr_duplicates_skipped || 0);
       setMessage(skipped ? `Upload completato: ${skipped} misura gia presente non inserita` : `Caricati ${mtrFiles.length} file MTR/CSV/DTA/ZIP`);
       setOperationSummary({ type: "mtr", ...job.summary });
@@ -103,12 +122,15 @@ export function ImportPage({ jobs, mode = "full", onDone }: { jobs: Job[]; mode?
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <Panel title="Selezione lavoro">
-        <select className="h-10 w-full rounded-md border border-line px-3 text-sm" value={jobId} onChange={(event) => setJobId(Number(event.target.value))}>
-          <option value={0}>Seleziona lavoro</option>
-          {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
-        </select>
-      </Panel>
+      {mode === "full" && (
+        <Panel title="Selezione lavoro">
+          <select className="h-10 w-full rounded-md border border-line px-3 text-sm" value={jobId} onChange={(event) => setJobId(Number(event.target.value))}>
+            <option value={0}>Seleziona lavoro</option>
+            {jobs.map((job) => <option key={job.id} value={job.id}>{job.id} - {job.titolo}</option>)}
+          </select>
+        </Panel>
+      )}
+      {mode === "simple" && <Panel title="Lavoro automatico"><p className="text-sm text-slate-600">Al primo caricamento viene usato o creato automaticamente il lavoro fittizio <strong>Generazione PDF</strong>.</p></Panel>}
       {mode === "full" && (
         <Panel title="Import Excel">
           <div className="grid gap-3">
@@ -127,7 +149,7 @@ export function ImportPage({ jobs, mode = "full", onDone }: { jobs: Job[]; mode?
             onChange={(event) => setMtrFiles(Array.from(event.target.files ?? []))}
             disabled={busy}
           />
-          <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtrUpload} disabled={busy || !jobId || mtrFiles.length === 0}>
+          <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md bg-action px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtrUpload} disabled={busy || (mode === "full" && !jobId) || mtrFiles.length === 0}>
             <Upload size={18} /> Carica MTR/CSV/DTA/ZIP
           </button>
           <div className="flex items-center gap-2 pt-2 text-xs font-medium uppercase text-slate-500">
@@ -140,7 +162,7 @@ export function ImportPage({ jobs, mode = "full", onDone }: { jobs: Job[]; mode?
             </label>
             <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60" onClick={() => setMtrPickerOpen(true)} disabled={busy}><FolderOpen size={16} /> Scegli cartella</button>
           </div>
-          <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtr} disabled={busy || !jobId || !folder}><FolderOpen size={18} /> Scansiona cartella server</button>
+          <button className="inline-flex h-10 w-fit items-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60" onClick={runMtr} disabled={busy || (mode === "full" && !jobId) || !folder}><FolderOpen size={18} /> Scansiona cartella server</button>
         </div>
       </Panel>
       {mode === "full" ? (

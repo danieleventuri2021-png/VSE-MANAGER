@@ -66,8 +66,8 @@ export default function App() {
   }, [refresh]);
 
   useEffect(() => {
-    if (mode === "simple" && !["new", "import", "review", "pdf"].includes(view)) {
-      setView("new");
+    if (mode === "simple" && !["import", "review", "pdf"].includes(view)) {
+      setView("import");
     }
   }, [mode, view]);
 
@@ -88,7 +88,7 @@ export default function App() {
   function setMode(nextMode: WorkflowMode) {
     window.localStorage.setItem(MODE_KEY, nextMode);
     setModeState(nextMode);
-    setView(nextMode === "simple" ? "new" : "dashboard");
+    setView(nextMode === "simple" ? "import" : "dashboard");
   }
 
   if (checkingAuth) {
@@ -111,7 +111,7 @@ export default function App() {
       <Suspense fallback={fallback}>
         {view === "dashboard" && mode === "full" && <Dashboard health={health} ports={ports} jobs={visibleJobs} onOpenAnomalies={openAnomalies} />}
         {view === "jobs" && mode === "full" && <Jobs jobs={visibleJobs} onChanged={refresh} />}
-        {view === "new" && <NewJob mode={mode} onCreated={refresh} />}
+        {view === "new" && mode === "full" && <NewJob mode={mode} onCreated={refresh} />}
         {view === "import" && <ImportPage jobs={visibleJobs} mode={mode} onDone={refresh} />}
         {view === "matches" && mode === "full" && <Matches jobs={visibleJobs} />}
         {view === "review" && <ReviewMtr jobs={visibleJobs} mode={mode} />}
