@@ -347,7 +347,10 @@ def import_mtr_folder(job_id: int, payload: FolderRequest, current_user: Utente 
     job = _job_or_404(db, job_id, current_user)
     parsed_files = scan_mtr_folder(payload.folder_path)
     _assign_missing_device_identifiers(parsed_files)
-    kept_files, skipped_duplicates = filter_duplicate_measurement_files(db, job, parsed_files)
+    if _job_workflow_mode(job) == "simple":
+        kept_files, skipped_duplicates = parsed_files, []
+    else:
+        kept_files, skipped_duplicates = filter_duplicate_measurement_files(db, job, parsed_files)
     _replace_mtr_files(db, job, kept_files, payload.folder_path, skipped_duplicates, len(parsed_files))
     log_event(db, "mtr_imported", f"Importati {len(kept_files)} file MTR/CSV/DTA", lavoro_id=job_id, dettagli={"skipped_duplicates": skipped_duplicates})
     db.commit()
@@ -391,7 +394,10 @@ def upload_mtr_files(job_id: int, files: list[UploadFile] = File(...), current_u
 
     parsed_files = [parse_mtr_file(path) for path in sorted(saved_paths, key=lambda item: item.name.lower())]
     _assign_missing_device_identifiers(parsed_files)
-    kept_files, skipped_duplicates = filter_duplicate_measurement_files(db, job, parsed_files)
+    if _job_workflow_mode(job) == "simple":
+        kept_files, skipped_duplicates = parsed_files, []
+    else:
+        kept_files, skipped_duplicates = filter_duplicate_measurement_files(db, job, parsed_files)
     _replace_mtr_files(db, job, kept_files, str(target_dir), skipped_duplicates, len(parsed_files))
     log_event(db, "mtr_uploaded", f"Caricati {len(kept_files)} file MTR/CSV/DTA", lavoro_id=job_id, dettagli={"files": [path.name for path in saved_paths], "skipped_duplicates": skipped_duplicates})
     db.commit()

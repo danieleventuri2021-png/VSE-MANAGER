@@ -21,6 +21,7 @@ export function ImportPage({ jobs, mode = "full", onDone }: { jobs: Job[]; mode?
 
   async function effectiveJobId() {
     if (jobId) return jobId;
+    if (mode === "simple" && jobs[0]) return jobs[0].id;
     if (mode !== "simple") return 0;
     const job = await createJob({ titolo: "Generazione PDF", workflow_mode: "simple" });
     setJobId(job.id);

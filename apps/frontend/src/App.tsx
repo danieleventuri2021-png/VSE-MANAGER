@@ -103,7 +103,9 @@ export default function App() {
     return <ModeChoice onSelect={setMode} onLogout={logout} user={user} />;
   }
 
-  const visibleJobs = jobs.filter((job) => ((job.workflow_mode || job.summary?.workflow_mode || "full") === mode));
+  const matchingJobs = jobs.filter((job) => ((job.workflow_mode || job.summary?.workflow_mode || "full") === mode));
+  const simpleJob = matchingJobs.find((job) => Number(job.summary?.mtr_files || 0) > 0) || matchingJobs[0];
+  const visibleJobs = mode === "simple" ? (simpleJob ? [simpleJob] : []) : matchingJobs;
 
   return (
     <Layout view={view} setView={setView} mode={mode} setMode={setMode} user={user} onLogout={logout}>
