@@ -297,7 +297,8 @@ def upload_excel(job_id: int, file: UploadFile = File(...), current_user: Utente
     settings = get_settings()
     target_dir = Path(settings.input_dir) / f"job_{job_id}"
     target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / (file.filename or "import.xlsx")
+    safe_excel_name = Path(file.filename or "import.xlsx").name or "import.xlsx"
+    target = target_dir / safe_excel_name
     with target.open("wb") as handle:
         shutil.copyfileobj(file.file, handle)
     records, mapping = import_excel(target)

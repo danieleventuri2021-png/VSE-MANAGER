@@ -9,8 +9,11 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 import re
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+try:
+    import tkinter as tk
+    from tkinter import ttk, filedialog, messagebox
+except ImportError:  # Ambiente headless: GUI non disponibile, parsing e PDF funzionano comunque
+    tk = ttk = filedialog = messagebox = None
 from fpdf import FPDF
 
 

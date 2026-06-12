@@ -152,7 +152,8 @@ def _save_dta(source: Path, updates: dict) -> list[str]:
                 continue
             pattern = rf"^({re.escape(dta_key)}=)(.*)$"
             if re.match(pattern, line, flags=re.IGNORECASE):
-                new_line = re.sub(pattern, rf"\g<1>{updates[field]}", line, flags=re.IGNORECASE)
+                new_value = str(updates[field])
+                new_line = re.sub(pattern, lambda m: m.group(1) + new_value, line, flags=re.IGNORECASE)
                 changed.append(field)
                 break
         output.append(new_line)
@@ -171,7 +172,8 @@ def _save_key_value_text(source: Path, updates: dict, separators: str = r"[:=]")
                 continue
             pattern = rf"^(\s*(?:{'|'.join(re.escape(alias) for alias in aliases)})\s*(?:{separators}\s*)+)(.*)$"
             if re.match(pattern, line, flags=re.IGNORECASE):
-                new_line = re.sub(pattern, rf"\g<1>{updates[field]}", line, flags=re.IGNORECASE)
+                new_value = str(updates[field])
+                new_line = re.sub(pattern, lambda m: m.group(1) + new_value, line, flags=re.IGNORECASE)
                 changed.append(field)
                 break
         output.append(new_line)

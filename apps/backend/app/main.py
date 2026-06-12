@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -23,8 +25,22 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(router, prefix="/api", dependencies=[Depends(get_current_user)])
 
 
+_logger = logging.getLogger("gestione_vse")
+
+
 @app.on_event("startup")
 def startup() -> None:
+    if settings.auth_secret_key == "cambia-questa-chiave-vse-manager":
+        _logger.warning(
+            "AUTH_SECRET_KEY non impostata: e' in uso la chiave di default. "
+            "Imposta AUTH_SECRET_KEY in apps/backend/.env con un valore casuale, "
+            "soprattutto se il server e' esposto in LAN."
+        )
+    if settings.admin_password == "admin":
+        _logger.warning(
+            "ADMIN_PASSWORD e' ancora 'admin': cambia la password dell'utente admin "
+            "dalla pagina Impostazioni o imposta ADMIN_PASSWORD in apps/backend/.env."
+        )
     try:
         ensure_schema()
         Base.metadata.create_all(bind=engine)
