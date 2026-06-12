@@ -13,6 +13,11 @@ dist/
 .env
 apps/*/.env
 TEST-PDF/
+TEST_RESULT/
+graphify-out/
+.codex/
+apps/backend/C*/
+data/templates/job_*/
 data/input/*
 data/output/*
 data/backup/*
