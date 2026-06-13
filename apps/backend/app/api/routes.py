@@ -1,11 +1,11 @@
 from pathlib import Path
 import shutil
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import func, text
@@ -31,7 +31,16 @@ from app.services.mtr_parser import parse_mtr_file, scan_mtr_folder
 from app.services.mtr_writer import write_mtr_updates
 from app.services.port_checker import check_ports
 from app.services.session_defaults_service import apply_defaults_to_verification, update_job_defaults
-from app.services.auth_service import authenticate_user, create_access_token, get_current_user, hash_password, verify_password
+from app.services.auth_service import (
+    authenticate_user,
+    check_login_rate_limit,
+    create_access_token,
+    get_current_user,
+    hash_password,
+    register_failed_login,
+    reset_login_attempts,
+    verify_password,
+)
 from app.services.source_writer import save_to_source
 from app.services.vse_defaults import ansur_defaults, job_defaults, source_data
 
@@ -83,10 +92,22 @@ class BulkDeleteRequest(BaseModel):
 
 
 @auth_router.post("/auth/login")
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = authenticate_user(db, payload.username.strip(), payload.password)
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    username = payload.username.strip()
+    client_ip = request.client.host if request.client else "?"
+    rate_key = f"{client_ip}:{username.lower()}"
+    wait = check_login_rate_limit(rate_key)
+    if wait is not None:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Troppi tentativi di accesso falliti. Riprova tra {wait} secondi.",
+            headers={"Retry-After": str(wait)},
+        )
+    user = authenticate_user(db, username, payload.password)
     if not user:
+        register_failed_login(rate_key)
         raise HTTPException(status_code=401, detail="Username o password non validi")
+    reset_login_attempts(rate_key)
     return {"access_token": create_access_token(user), "token_type": "bearer", "user": _user_dict(user)}
 
 
@@ -410,8 +431,20 @@ def upload_mtr_files(job_id: int, files: list[UploadFile] = File(...), current_u
 @router.post("/jobs/{job_id}/analyze", response_model=JobRead)
 def analyze_job(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id, current_user)
-    equipment_rows = db.query(Apparecchiatura).filter(Apparecchiatura.lavoro_id == job_id).order_by(Apparecchiatura.row_index).all()
-    mtr_rows = db.query(FileMtr).filter(FileMtr.lavoro_id == job_id).order_by(FileMtr.id).all()
+    equipment_rows = (
+        db.query(Apparecchiatura)
+        .options(selectinload(Apparecchiatura.verifiche))
+        .filter(Apparecchiatura.lavoro_id == job_id)
+        .order_by(Apparecchiatura.row_index)
+        .all()
+    )
+    mtr_rows = (
+        db.query(FileMtr)
+        .options(selectinload(FileMtr.verifiche))
+        .filter(FileMtr.lavoro_id == job_id)
+        .order_by(FileMtr.id)
+        .all()
+    )
     matches, orphans = match_records([_equipment_dict(row) for row in equipment_rows], [_mtr_dict(row) for row in mtr_rows])
     db.query(Anomalia).filter(Anomalia.lavoro_id == job_id).delete()
     counts = {"certo": 0, "da_controllare": 0, "mancante": 0, "mtr_orfano": len(orphans), "differenze": 0}
@@ -444,6 +477,7 @@ def analyze_job(job_id: int, current_user: Utente = Depends(get_current_user), d
         counts[match.status] += 1
     for index in orphans:
         mtr_rows[index].stato = "mtr_orfano"
+        _ensure_verification(db, mtr_rows[index])
         create_anomaly(db, job_id, "mtr_orfano", "File MTR/CSV/DTA non associato ad alcuna riga Excel", "info", {"mtr_id": mtr_rows[index].id})
     job.stato = "analizzato"
     job.summary = {**job.summary, **counts}
@@ -456,21 +490,35 @@ def analyze_job(job_id: int, current_user: Utente = Depends(get_current_user), d
 @router.get("/jobs/{job_id}/matches")
 def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     job = _job_or_404(db, job_id, current_user)
-    rows = db.query(Apparecchiatura).filter(Apparecchiatura.lavoro_id == job_id).order_by(Apparecchiatura.row_index).all()
-    matches = [
-        {
-            "equipment": _equipment_dict(row),
-            "status": row.match_status,
-            "score": row.match_score,
-            "mtr": _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None,
-            "reason": _match_reason(_equipment_dict(row), _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None),
-            "differences": analyze_differences(_equipment_dict(row), _mtr_dict(row.matched_file_mtr) if row.matched_file_mtr else None),
-            "registry_match": _registry_candidate_for_match(db, job, row.matched_file_mtr, row.verifiche[0] if row.verifiche else None),
-        }
-        for row in rows
-    ]
+    rows = (
+        db.query(Apparecchiatura)
+        .options(
+            selectinload(Apparecchiatura.matched_file_mtr),
+            selectinload(Apparecchiatura.verifiche),
+        )
+        .filter(Apparecchiatura.lavoro_id == job_id)
+        .order_by(Apparecchiatura.row_index)
+        .all()
+    )
+    registry_cache: dict = {}
+    matches = []
+    for row in rows:
+        equipment = _equipment_dict(row)
+        mtr = _mtr_summary_dict(row.matched_file_mtr) if row.matched_file_mtr else None
+        matches.append(
+            {
+                "equipment": equipment,
+                "status": row.match_status,
+                "score": row.match_score,
+                "mtr": mtr,
+                "reason": _match_reason(equipment, mtr),
+                "differences": analyze_differences(equipment, mtr),
+                "registry_match": _registry_candidate_for_match(db, job, row.matched_file_mtr, row.verifiche[0] if row.verifiche else None, registry_cache),
+            }
+        )
     orphan_mtrs = (
         db.query(FileMtr)
+        .options(selectinload(FileMtr.verifiche))
         .filter(FileMtr.lavoro_id == job_id, ~FileMtr.matched_apparecchiature.any())
         .order_by(FileMtr.id)
         .all()
@@ -480,10 +528,10 @@ def get_matches(job_id: int, current_user: Utente = Depends(get_current_user), d
             "equipment": None,
             "status": file_mtr.stato or "mtr_orfano",
             "score": None,
-            "mtr": _mtr_dict(file_mtr),
+            "mtr": _mtr_summary_dict(file_mtr),
             "reason": "File MTR/CSV/DTA senza riga Excel associata",
             "differences": {"missing_excel": True, "fields": []},
-            "registry_match": _registry_candidate_for_match(db, job, file_mtr, file_mtr.verifiche[0] if file_mtr.verifiche else None),
+            "registry_match": _registry_candidate_for_match(db, job, file_mtr, file_mtr.verifiche[0] if file_mtr.verifiche else None, registry_cache),
         }
         for file_mtr in orphan_mtrs
     )
@@ -643,8 +691,14 @@ def update_job_settings(job_id: int, payload: dict = Body(...), current_user: Ut
 @router.get("/jobs/{job_id}/review")
 def get_review_list(job_id: int, current_user: Utente = Depends(get_current_user), db: Session = Depends(get_db)):
     _job_or_404(db, job_id, current_user)
-    files = db.query(FileMtr).filter(FileMtr.lavoro_id == job_id).order_by(FileMtr.id).all()
-    return [_review_summary(db, file_mtr) for file_mtr in files]
+    files = (
+        db.query(FileMtr)
+        .options(selectinload(FileMtr.verifiche))
+        .filter(FileMtr.lavoro_id == job_id)
+        .order_by(FileMtr.id)
+        .all()
+    )
+    return [_review_summary(file_mtr) for file_mtr in files]
 
 
 @router.get("/jobs/{job_id}/review/{file_mtr_id}")
@@ -653,8 +707,6 @@ def get_review_detail(job_id: int, file_mtr_id: int, current_user: Utente = Depe
     file_mtr = _file_or_404(db, file_mtr_id, job_id, current_user)
     verification = _ensure_verification(db, file_mtr)
     final = build_final_pdf_data(job, file_mtr, verification)
-    verification.dati_finali_pdf_json = final
-    db.commit()
     return {
         "file": _mtr_dict(file_mtr),
         "verification": _verification_dict(verification),
@@ -721,7 +773,7 @@ def save_source(file_mtr_id: int, payload: dict = Body(default={}), current_user
     file_mtr.parsed_data = parsed
     file_mtr.parsed_json = parsed.get("normalized") or {}
     file_mtr.measurement_index_json = parsed.get("measurement_index") or {}
-    file_mtr.last_source_write_at = datetime.utcnow()
+    file_mtr.last_source_write_at = datetime.now(timezone.utc)
     log_event(db, "source_saved", "Campi identificativi salvati nel sorgente", lavoro_id=file_mtr.lavoro_id, dettagli={"file_mtr_id": file_mtr_id, "changed": result["changed"], "backup": result["backup"]})
     db.commit()
     return {"changed": result["changed"], "backup": result["backup"]}
@@ -993,7 +1045,7 @@ def _update_file_mtr_from_parsed(row: FileMtr, parsed: dict) -> None:
     row.template_ansur = parsed.get("template_ansur")
     row.is_permanent_three_measure_template = bool(parsed.get("is_permanent_three_measure_template"))
     row.source_type = (parsed.get("normalized") or {}).get("source_type", row.source_type)
-    row.last_source_write_at = datetime.utcnow()
+    row.last_source_write_at = datetime.now(timezone.utc)
 
 
 def _extract_mtr_zip(zip_path: Path, output_dir: Path) -> list[Path]:
@@ -1141,15 +1193,15 @@ def _ensure_verification(db: Session, file_mtr: FileMtr) -> VerificaVse:
     return verification
 
 
-def _review_summary(db: Session, file_mtr: FileMtr) -> dict:
-    verification = _ensure_verification(db, file_mtr)
+def _review_summary(file_mtr: FileMtr) -> dict:
+    verification = file_mtr.verifiche[0] if file_mtr.verifiche else None
     return {
         "file_mtr_id": file_mtr.id,
         "nome_file": file_mtr.nome_file,
         "template_ansur": file_mtr.template_ansur,
         "is_permanent_three_measure_template": file_mtr.is_permanent_three_measure_template,
         "stato": file_mtr.stato,
-        "stato_revisione": verification.stato_revisione,
+        "stato_revisione": verification.stato_revisione if verification else "da_revisionare",
         "matricola": file_mtr.matricola,
         "modello": file_mtr.modello,
     }
@@ -1183,6 +1235,13 @@ def _anomaly_dict(row: Anomalia) -> dict:
 
 def _mtr_dict(row: FileMtr) -> dict:
     data = {field: getattr(row, field) for field in ("id", "path_corrente", "nome_file", "matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto", "parsed_data", "stato", "source_type", "template_ansur", "is_permanent_three_measure_template", "parsed_json", "measurement_index_json")}
+    data["stanza"] = ((row.parsed_json or {}).get("dut") or {}).get("location") or row.reparto
+    return data
+
+
+def _mtr_summary_dict(row: FileMtr) -> dict:
+    """Versione ridotta per la tabella Abbinamenti: niente parsed_data/parsed_json/measurement_index (payload enorme)."""
+    data = {field: getattr(row, field) for field in ("id", "nome_file", "matricola", "seriale", "inventario", "produttore", "modello", "descrizione", "reparto")}
     data["stanza"] = ((row.parsed_json or {}).get("dut") or {}).get("location") or row.reparto
     return data
 
@@ -1275,19 +1334,25 @@ def _registry_dict(row: RegistroApparecchiatura) -> dict:
     }
 
 
-def _registry_candidate_for_match(db: Session, job: LavoroVse, file_mtr: FileMtr | None, verification: VerificaVse | None) -> dict | None:
+def _registry_candidate_for_match(db: Session, job: LavoroVse, file_mtr: FileMtr | None, verification: VerificaVse | None, candidates_cache: dict | None = None) -> dict | None:
     if not file_mtr:
         return None
     data = build_final_pdf_data(job, file_mtr, verification)
     row_data = registry_data_from_pdf_data(job, file_mtr, verification, data)
-    candidates = (
-        db.query(RegistroApparecchiatura)
-        .filter(
-            RegistroApparecchiatura.owner_user_id == row_data.get("owner_user_id"),
-            RegistroApparecchiatura.cliente_nome == row_data["cliente_nome"],
+    cache_key = (row_data.get("owner_user_id"), row_data["cliente_nome"])
+    if candidates_cache is not None and cache_key in candidates_cache:
+        candidates = candidates_cache[cache_key]
+    else:
+        candidates = (
+            db.query(RegistroApparecchiatura)
+            .filter(
+                RegistroApparecchiatura.owner_user_id == cache_key[0],
+                RegistroApparecchiatura.cliente_nome == cache_key[1],
+            )
+            .all()
         )
-        .all()
-    )
+        if candidates_cache is not None:
+            candidates_cache[cache_key] = candidates
     ranked = sorted(((registry_match_score(row, row_data), row) for row in candidates), key=lambda item: item[0]["score"], reverse=True)
     if not ranked or ranked[0][0]["score"] < 90:
         return None

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime, timedelta
+from collections import defaultdict, deque
+from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import json
 import secrets
+import threading
+import time
 from typing import Any
 
 from fastapi import Depends, HTTPException, Request, status
@@ -18,6 +21,36 @@ from app.models import Utente
 
 PASSWORD_ALGORITHM = "pbkdf2_sha256"
 PASSWORD_ITERATIONS = 260_000
+
+# Rate-limiting login: blocco temporaneo dopo troppi tentativi falliti (protezione brute-force in LAN).
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_WINDOW_SECONDS = 300
+_login_attempts: dict[str, deque[float]] = defaultdict(deque)
+_login_lock = threading.Lock()
+
+
+def check_login_rate_limit(key: str) -> int | None:
+    """Restituisce i secondi di attesa se l'utente/IP e' bloccato, altrimenti None."""
+    now = time.monotonic()
+    with _login_lock:
+        attempts = _login_attempts[key]
+        while attempts and now - attempts[0] > LOGIN_WINDOW_SECONDS:
+            attempts.popleft()
+        if len(attempts) >= LOGIN_MAX_ATTEMPTS:
+            return int(LOGIN_WINDOW_SECONDS - (now - attempts[0])) + 1
+        if not attempts:
+            _login_attempts.pop(key, None)
+    return None
+
+
+def register_failed_login(key: str) -> None:
+    with _login_lock:
+        _login_attempts[key].append(time.monotonic())
+
+
+def reset_login_attempts(key: str) -> None:
+    with _login_lock:
+        _login_attempts.pop(key, None)
 
 
 def hash_password(password: str) -> str:
@@ -46,7 +79,7 @@ def authenticate_user(db: Session, username: str, password: str) -> Utente | Non
 
 def create_access_token(user: Utente) -> str:
     settings = get_settings()
-    expires_at = datetime.utcnow() + timedelta(minutes=settings.auth_token_expire_minutes)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.auth_token_expire_minutes)
     payload = {
         "sub": user.username,
         "uid": user.id,
@@ -71,7 +104,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
         payload = json.loads(_unb64(body).decode("utf-8"))
     except Exception:
         raise _credentials_error()
-    if int(payload.get("exp") or 0) < int(datetime.utcnow().timestamp()):
+    if int(payload.get("exp") or 0) < int(datetime.now(timezone.utc).timestamp()):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessione scaduta")
     return payload
 

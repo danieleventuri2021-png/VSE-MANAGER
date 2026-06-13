@@ -1,6 +1,6 @@
 import { FileCheck, Save, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { applyJobDefaults, generateOnePdf, getReview, getReviewDetail, saveJobSettings, saveReview, saveSource, type Job } from "../api/client";
+import { applyJobDefaults, generateOnePdf, getReview, getReviewDetail, saveReview, saveSource, type Job } from "../api/client";
 import { Badge } from "../components/Badge";
 import { Panel } from "../components/Panel";
 import { RefreshButton } from "../components/RefreshButton";
@@ -121,25 +121,11 @@ export function ReviewMtr({ jobs, mode = "full" }: { jobs: Job[]; mode?: "full" 
     await loadDetail();
   }
 
-  async function applyDefaults() {
+  async function saveAndApplyAll() {
     if (!jobId) return;
-    await applyJobDefaults(jobId, { values: fields });
-    setMessage("Valori comuni applicati agli MTR/CSV/DTA non bloccati");
+    await applyJobDefaults(jobId, { values: fields, save_as_job_default: true });
+    setMessage("Valori comuni salvati come default e applicati agli MTR/CSV/DTA non bloccati");
     await loadDetail();
-  }
-
-  async function saveAsJobDefaults() {
-    if (!jobId) return;
-    await saveJobSettings(jobId, {
-      tecnico: fields.tecnico,
-      firma_path: fields.firma_path,
-      proprieta: fields.proprieta,
-      periodicita: fields.periodicita,
-      tensione: fields.tensione,
-      frequenza: fields.frequenza,
-      protezione: fields.protezione,
-    });
-    setMessage("Valori comuni salvati come default lavoro");
   }
 
   useEffect(() => { loadList(); }, [jobId]);
@@ -171,7 +157,7 @@ export function ReviewMtr({ jobs, mode = "full" }: { jobs: Job[]; mode?: "full" 
         {message && <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div>}
         {detail && (
           <>
-            <Panel title={`Revisione MTR/CSV/DTA - campi modulo ${isConsip ? "CONSIP" : "VSS.GEN"}`} action={<div className="flex flex-wrap gap-2"><button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={saveAsJobDefaults}>Salva default lavoro</button><button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={applyDefaults}><ShieldCheck size={16} /> Applica a tutti</button><button className="inline-flex h-9 items-center gap-2 rounded-md bg-action px-3 text-sm text-white" onClick={save}><Save size={16} /> Applica solo a questo MTR/CSV/DTA</button></div>}>
+            <Panel title={`Revisione MTR/CSV/DTA - campi modulo ${isConsip ? "CONSIP" : "VSS.GEN"}`} action={<div className="flex flex-wrap gap-2"><button className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm" onClick={saveAndApplyAll}><ShieldCheck size={16} /> Salva e applica a tutti</button><button className="inline-flex h-9 items-center gap-2 rounded-md bg-action px-3 text-sm text-white" onClick={save}><Save size={16} /> Applica solo a questo MTR/CSV/DTA</button></div>}>
               <div className="grid gap-5">
                 {activeGroups.map((group) => (
                   <section key={group.title}>

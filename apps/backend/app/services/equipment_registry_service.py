@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 import re
 from typing import Any
 
@@ -113,7 +113,7 @@ def registry_data_from_pdf_data(job: LavoroVse, file_mtr: FileMtr, verification:
 
 
 def build_registry_ics(rows: list[RegistroApparecchiatura]) -> str:
-    now = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//VSE-MANAGER//Scadenze VSE//IT"]
     for row in rows:
         if not row.data_prossima_verifica:

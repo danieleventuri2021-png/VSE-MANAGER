@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 import xml.etree.ElementTree as ET
+from defusedxml.ElementTree import fromstring as safe_fromstring
 from typing import Any
 
 from app.services.ansur_template_detector import is_permanent_three_measure_template
@@ -10,7 +11,7 @@ from app.services.xml_cleaner import read_xml_document_text
 
 def parse_ansur_mtr(path: str | Path) -> dict[str, Any]:
     file_path = Path(path)
-    root = ET.fromstring(read_xml_document_text(file_path))
+    root = safe_fromstring(read_xml_document_text(file_path))
     items = _all_items(root)
     measurements = _measurements(root)
     instrument = _instrument_data(root)

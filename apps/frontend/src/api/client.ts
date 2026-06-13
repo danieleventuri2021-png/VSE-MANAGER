@@ -170,7 +170,7 @@ export async function uploadMtrFiles(jobId: number, files: File[]) {
 }
 
 export async function analyzeJob(jobId: number) {
-  const { data } = await api.post(`/api/jobs/${jobId}/analyze`);
+  const { data } = await api.post(`/api/jobs/${jobId}/analyze`, undefined, { timeout: 300000 });
   return data as Job;
 }
 

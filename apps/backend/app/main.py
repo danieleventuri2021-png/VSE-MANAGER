@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import logging
 
 from fastapi import Depends, FastAPI
@@ -11,25 +12,11 @@ from app.services.auth_service import ensure_default_admin, get_current_user
 
 settings = get_settings()
 
-app = FastAPI(title="gestione-vse", version="0.1.0")
-
-_cors_origins = list({settings.frontend_origin, *settings.cors_origins_list})
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Accept", "Accept-Language", "Content-Language", "Content-Type", "Authorization", "X-Requested-With"],
-)
-app.include_router(auth_router, prefix="/api")
-app.include_router(router, prefix="/api", dependencies=[Depends(get_current_user)])
-
-
 _logger = logging.getLogger("gestione_vse")
 
 
-@app.on_event("startup")
-def startup() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     if settings.auth_secret_key == "cambia-questa-chiave-vse-manager":
         _logger.warning(
             "AUTH_SECRET_KEY non impostata: e' in uso la chiave di default. "
@@ -51,6 +38,21 @@ def startup() -> None:
     except Exception as exc:
         app.state.database_ready = False
         app.state.database_error = str(exc)
+    yield
+
+
+app = FastAPI(title="gestione-vse", version="0.1.0", lifespan=lifespan)
+
+_cors_origins = list({settings.frontend_origin, *settings.cors_origins_list})
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Accept", "Accept-Language", "Content-Language", "Content-Type", "Authorization", "X-Requested-With"],
+)
+app.include_router(auth_router, prefix="/api")
+app.include_router(router, prefix="/api", dependencies=[Depends(get_current_user)])
 
 
 @app.get("/health")

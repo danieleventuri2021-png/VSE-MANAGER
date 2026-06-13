@@ -5,6 +5,7 @@ import re
 import shutil
 import tempfile
 import xml.etree.ElementTree as ET
+from defusedxml.ElementTree import fromstring as safe_fromstring
 
 from app.services.mtr_parser import parse_mtr_file
 from app.services.xml_cleaner import read_xml_document_text
@@ -116,7 +117,7 @@ def _save_xml_or_text_mtr(source: Path, updates: dict) -> list[str]:
 
 
 def _save_xml(source: Path, updates: dict) -> list[str]:
-    root = ET.fromstring(read_xml_document_text(source))
+    root = safe_fromstring(read_xml_document_text(source))
     changed = []
     for item in root.iter():
         if item.tag.rsplit("}", 1)[-1].lower() != "item":
